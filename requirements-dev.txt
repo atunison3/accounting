@@ -4,7 +4,6 @@ build==1.2.2.post1
 certifi==2025.7.9
 charset-normalizer==3.4.2
 click==8.2.1
--e git+https://github.com/atunison3/accounting.git@a515433b54dae69829c04ff20eaef56e126481df#egg=college_accounting
 docopt==0.6.2
 idna==3.10
 markdown-it-py==3.0.0
