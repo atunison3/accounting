@@ -30,7 +30,7 @@ exclude = '''
 line-length = 88
 target-version = "py311"
 select = ["E", "F", "W", "C90", "B", "I", "PL"]
-ignore = ["E501"]  # Ignore line length if needed
+ignore = ["F403"]
 exclude = ["build", "dist", ".venv"]
 
 [tool.bandit]
