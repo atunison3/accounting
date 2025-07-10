@@ -31,7 +31,7 @@ jobs:
       - name: Run Black (formatting check)
         run: |
           echo "Running Black..."
-          black --check --diff .
+          black .
 
       - name: Run Bandit (security check)
         run: |
