@@ -1,0 +1,53 @@
+[project]
+name = "college_accounting"
+version = "0.1.0"
+description = "A simple accounting system with dunder addition support"
+authors = [
+    { name="Andy Tunison", email="andrew.e.tunison@gmail.com" }
+]
+dependencies = []
+
+[tool.black]
+line-length = 120
+target-version = ['py310']
+skip-string-normalization = false
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+select = ["E", "F", "W", "C90", "B", "I", "PL"]
+ignore = ["E501"]  # Ignore line length if needed
+exclude = ["build", "dist", ".venv"]
+
+[tool.bandit]
+skips = ["B101"]  # Optional: skip assert usage warnings
+exclude = ["tests"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests"
+]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.coverage.run]
+branch = true
+source = ["."]
