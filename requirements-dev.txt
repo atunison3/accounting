@@ -1,0 +1,27 @@
+bandit==1.8.6
+black==25.1.0
+build==1.2.2.post1
+certifi==2025.7.9
+charset-normalizer==3.4.2
+click==8.2.1
+-e git+https://github.com/atunison3/accounting.git@67247ef697fbaef0ce8ede99be59e357dad4db80#egg=college_accounting
+docopt==0.6.2
+idna==3.10
+markdown-it-py==3.0.0
+mdurl==0.1.2
+mypy_extensions==1.1.0
+packaging==25.0
+pathspec==0.12.1
+pbr==6.1.1
+pipreqs==0.4.13
+platformdirs==4.3.8
+Pygments==2.19.2
+pyproject_hooks==1.2.0
+PyYAML==6.0.2
+requests==2.32.4
+rich==14.0.0
+ruff==0.12.2
+setuptools==80.9.0
+stevedore==5.4.1
+urllib3==2.5.0
+yarg==0.1.10

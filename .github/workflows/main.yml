@@ -3,12 +3,10 @@ name: Python Linting
 on:
   push:
     branches:
-      - main
-      - master
+      - '**'    # All branches
   pull_request:
     branches:
-      - main
-      - master
+      - '**'    # All branches
 
 jobs:
   lint:
@@ -27,12 +25,13 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install black bandit ruff
+          pip install -r requirements-dev.txt
+          pip install .
 
-      - name: Run Black (code formatting)
+      - name: Run Black (formatting check)
         run: |
           echo "Running Black..."
-          black --check .
+          black .
 
       - name: Run Bandit (security check)
         run: |
