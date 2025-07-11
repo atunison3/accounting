@@ -29,8 +29,8 @@ exclude = '''
 [tool.ruff]
 line-length = 120
 target-version = "py311"
-select = ["E", "F", "W", "C90", "B", "I", "PL"]
-ignore = ["F403"]
+lint.select = ["E", "F", "W", "C90", "B", "I", "PL"]
+lint.ignore = ["F403"]
 exclude = ["build", "dist", ".venv"]
 
 [tool.bandit]
