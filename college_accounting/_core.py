@@ -68,7 +68,7 @@ class BalanceSheet:
             print(line)
         liabilities = self.liabilities
         n = width - 18 - len(str(liabilities))
-        line = f"Total Liabilities" + " " * n + f"${liabilities}"
+        line = "Total Liabilities" + " " * n + f"${liabilities}"
         print(line)
         print("=" * width)
 
