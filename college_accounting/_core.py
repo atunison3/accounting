@@ -1,22 +1,24 @@
 import pandas as pd
 from datetime import datetime
 
-__all__ = [
-    'SpreadSheet',
-    'Transaction'
-]
+__all__ = ["SpreadSheet", "Transaction"]
+
 
 class AccountingRow:
-    def __init__(
+    def __init__(  #noqa: PLR0913
         self,
         date: datetime,
-        cash: float = 0, supplies: float = 0,
-        shop_equipment: float = 0, office_equipment: float = 0,
+        cash: float = 0,
+        supplies: float = 0,
+        shop_equipment: float = 0,
+        office_equipment: float = 0,
         accounts_payable: float = 0,
-        freedman_capital: float = 0, freedman_withdrawal: float = 0,
-        service_revenue: float = 0, expenses: float = 0,
-        expense_type: str = "", 
-        description: str = None
+        freedman_capital: float = 0,
+        freedman_withdrawal: float = 0,
+        service_revenue: float = 0,
+        expenses: float = 0,
+        expense_type: str = "",
+        description: str = None,
     ):
         self.A = None
         self.date = date
@@ -34,35 +36,36 @@ class AccountingRow:
 
     def to_dict(self):
         return {
-            'A': self.A,
-            'Date': self.date,
-            'Cash': self.cash,
-            'Supplies': self.supplies,
-            'Computer Shop Equipment': self.computer_shop_equipment,
-            'Office Equipment': self.office_equipment,
-            'Accounts Payable': self.accounts_payable,
-            'Freedman Capital': self.freedman_capital,
-            'Freedman Withdrawal': self.freedman_withdrawal,
-            'Service Revenue': self.service_revenue,
-            'Expenses': self.expenses,
-            'Expense Type': self.expense_type, 
-            'Description': self.description
+            "A": self.A,
+            "Date": self.date,
+            "Cash": self.cash,
+            "Supplies": self.supplies,
+            "Computer Shop Equipment": self.computer_shop_equipment,
+            "Office Equipment": self.office_equipment,
+            "Accounts Payable": self.accounts_payable,
+            "Freedman Capital": self.freedman_capital,
+            "Freedman Withdrawal": self.freedman_withdrawal,
+            "Service Revenue": self.service_revenue,
+            "Expenses": self.expenses,
+            "Expense Type": self.expense_type,
+            "Description": self.description,
         }
 
 
 class Transaction(AccountingRow):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.A = 'Transaction'
+        self.A = "Transaction"
+
 
 class Balance(AccountingRow):
     def __init__(self, date: datetime, prev_balance: dict, transaction: dict):
         super().__init__(date)
-        self.A = 'Balance'
-        
+        self.A = "Balance"
+
         # Sum previous balance with transaction
         for key in prev_balance:
-            if key not in ['A', 'Date', 'Expense Type', 'Description']:
+            if key not in ["A", "Date", "Expense Type", "Description"]:
                 prev_value = prev_balance.get(key, 0)
                 trans_value = transaction.get(key, 0)
                 setattr(self, key.lower().replace(" ", "_"), prev_value + trans_value)
@@ -71,54 +74,55 @@ class Balance(AccountingRow):
 # Setup DataFrame
 class SpreadSheet(pd.DataFrame):
     def __init__(self):
-        
+
         columns = [
-            'A', 'Date',
-            'Cash', 'Supplies', 'Computer Shop Equipment', 'Office Equipment',           # Assets
-            'Accounts Payable',                                                          # Liabilities
-            'Freedman Capital', 'Freedman Withdrawal', 'Service Revenue', 'Expenses',  # Equity
-            'Expense Type', 
-            'Description'
+            "A",
+            "Date",
+            "Cash",
+            "Supplies",
+            "Computer Shop Equipment",
+            "Office Equipment",  # Assets
+            "Accounts Payable",  # Liabilities
+            "Freedman Capital",
+            "Freedman Withdrawal",
+            "Service Revenue",
+            "Expenses",  # Equity
+            "Expense Type",
+            "Description",
         ]
         super().__init__(columns=columns)
 
     @property
     def total_assets(self):
-        '''Calculates the total assets'''
-        
+        """Calculates the total assets"""
+
         if len(self) == 0:
             return 0
         n = len(self) - 1  # get the last row (Balance)
-        return sum(
-            self.loc[n, col]
-            for col in ['Cash', 'Supplies', 'Computer Shop Equipment', 'Office Equipment']
-        )
+        return sum(self.loc[n, col] for col in ["Cash", "Supplies", "Computer Shop Equipment", "Office Equipment"])
 
     @property
     def total_liabilities(self):
-        '''Calculates total liabilities'''
-        
+        """Calculates total liabilities"""
+
         if len(self) == 0:
             return 0
         n = len(self) - 1
-        
-        return sum(
-            self.loc[n, col]
-            for col in ['Accounts Payable']
-        )
+
+        return sum(self.loc[n, col] for col in ["Accounts Payable"])
 
     @property
     def total_equity(self):
-        '''Calculates total equity'''
+        """Calculates total equity"""
 
         if len(self) == 0:
             return 0
         n = len(self) - 1
 
         total_equity = 0
-        for column in ['Freedman Capital', 'Service Revenue']:
+        for column in ["Freedman Capital", "Service Revenue"]:
             total_equity += self.loc[n, column]
-        for column in ['Freedman Withdrawal', 'Expenses']:
+        for column in ["Freedman Withdrawal", "Expenses"]:
             total_equity -= self.loc[n, column]
 
         return total_equity
@@ -135,15 +139,11 @@ class SpreadSheet(pd.DataFrame):
         # Calculate new balance
         prev_balance = (
             updated_df.iloc[-2].to_dict()
-            if len(updated_df) >= 2 and updated_df.iloc[-2]['A'] == 'Balance'
+            if (len(updated_df) >= 2) and (updated_df.iloc[-2]["A"] == "Balance")
             else {col: 0 for col in self.columns}
         )
 
-        balance_row = Balance(
-            date=accounting_row.date,
-            prev_balance=prev_balance,
-            transaction=accounting_row.to_dict()
-        )
+        balance_row = Balance(date=accounting_row.date, prev_balance=prev_balance, transaction=accounting_row.to_dict())
 
         # Append the balance row
         balance_df = pd.DataFrame([balance_row.to_dict()])

@@ -30,7 +30,7 @@ exclude = '''
 line-length = 120
 target-version = "py311"
 lint.select = ["E", "F", "W", "C90", "B", "I", "PL"]
-lint.ignore = ["F403"]
+lint.ignore = ["F403", "PLR2004", "I001"]
 exclude = ["build", "dist", ".venv"]
 
 [tool.bandit]
