@@ -3,4 +3,4 @@ build/
 dist/
 *.egg-info
 release.bat
-__pyache__/
+__pycache__/
