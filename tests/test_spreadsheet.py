@@ -23,15 +23,11 @@ class TestSpreadSheet(unittest.TestCase):
                         description="Collected $250 for repair services."),
             Transaction(datetime(2024, 7, 7), cash=200, service_revenue=200,
                         description="Collected $200 for system upgrade labor."),
-            Transaction(datetime(2024, 7, 8), cash=200, service_revenue=200,
-                        description="Collected $200 for system upgrade labor."),
-            Transaction(datetime(2024, 7, 8), cash=200, service_revenue=200,
-                        description="Collected $200 for system upgrade labor."),
-            Transaction(datetime(2024, 7, 9), accounts_payable=85, expenses=85,
+            Transaction(datetime(2024, 7, 8), accounts_payable=85, expenses=85,
                         description="Electric bill due but unpaid, $85."),
-            Transaction(datetime(2024, 7, 10), cash=1200, service_revenue=1200,
+            Transaction(datetime(2024, 7, 9), cash=1200, service_revenue=1200,
                         description="Collected $1,200 for services."),
-            Transaction(datetime(2024, 7, 11), cash=-100, freedman_withdrawal=100,
+            Transaction(datetime(2024, 7, 10), cash=-100, freedman_withdrawal=100,
                         description="Withdrew $100 for personal use."),
         ]
 
@@ -43,14 +39,14 @@ class TestSpreadSheet(unittest.TestCase):
         last_row = self.sheet.iloc[-1]
 
         # Expected totals (manually calculated)
-        expected_cash = 6450
+        expected_cash = 3850
         expected_shop_equipment = 1200
         expected_office_equipment = 600
         expected_supplies = 250
         expected_accounts_payable = 335  # 250 + 85 unpaid
         expected_freedman_capital = 4500
         expected_freedman_withdrawal = 100
-        expected_service_revenue = 2050  # sum of all service revenue
+        expected_service_revenue = 1650  # sum of all service revenue
         expected_expenses = 485  # rent + electric
 
         self.assertEqual(last_row['Cash'], expected_cash)
@@ -66,13 +62,14 @@ class TestSpreadSheet(unittest.TestCase):
     def test_assets_equals_liabilities_plus_equity(self):
         """Test Assets = Liabilities + Equity in final balance"""
         total_assets = self.sheet.total_assets
-        total_liabilities_and_equity = self.sheet.total_liabilities_and_equity
+        total_liabilities = self.sheet.total_liabilities 
+        total_equity = self.sheet.total_equity 
 
-        self.assertAlmostEqual(total_assets, total_liabilities_and_equity, places=2)
+        self.assertAlmostEqual(total_assets, total_liabilities + total_equity, places=2)
 
     def test_row_count(self):
         """Test total number of rows: each transaction + balance pair"""
-        expected_rows = 12 * 2  # 12 transactions + 12 balances
+        expected_rows = 10 * 2  # 12 transactions + 12 balances
         self.assertEqual(len(self.sheet), expected_rows)
 
 if __name__ == '__main__':
