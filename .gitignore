@@ -4,3 +4,4 @@ dist/
 *.egg-info
 release.bat
 __pycache__/
+.ruff_cache/
