@@ -1,153 +1,144 @@
-__all__ = ["leading_digit", "Entry", "Account"]
-
+import pandas as pd
 
 def leading_digit(n: int) -> int:
+    '''Returns the leading digit of an integer'''
+
     return int(str(abs(n))[0])
 
-
-class Entry:
-    def __init__(self, transaction_id: str, amount: float, type_: str):
-        assert type_ in ("debit", "credit"), "type_ must be 'debit' or 'credit'"
-        self.transaction_id = transaction_id
-        self.amount = amount
-        self.type_ = type_
-
-    def __repr__(self):
-        return f"<Entry {self.type_.capitalize()} {self.amount}>"
-
-
-class Account:
-    def __init__(self, name: str, type_: int):
-
-        if not isinstance(type_, int):
-            raise TypeError("Invalid account type_ instance")
-
+class Account(pd.DataFrame):
+    def __init__(self, name: str, number: int):
+        super().__init__(columns = ['Transaction', 'Amount', 'Debit'])
         self.name = name
-        self.entries = []
-        self.type_ = type_
+        self.number = number
+        self.type_ = leading_digit(number)
 
-    def add_entry(self, new_entry: Entry):
-        self.entries.append(new_entry)
+    def add_transaction(self, transaction: str, amount: int, debit: bool):
+        '''Adds a line to the dataframe'''
 
-    def print_account(self, width=30):
-        """Print the T Account"""
+        # Create the new row
+        new_row = pd.DataFrame([{'Transaction': transaction, 'Amount': amount, 'Debit': debit}])
 
-        credits = [entry.value for entry in self.entries if entry.type_ == "credit"]
-        debits = [entry.value for entry in self.entries if entry.type_ == "debit"]
+        # "Append" the dict and reassign
+        updated = pd.concat([self, new_row], ignore_index=True)
+        self.__dict__.update(updated.__dict__)
 
-        while len(debits) < len(credits):
-            debits.append(float("nan"))
-        while len(credits) < len(debits):
-            credits.append(float("nan"))
+    def print_account(self):
+        '''Prints the account in a t chart'''
 
-        # Find the widest entry for nice formatting
-        max_debit_width = max([len(str(d)) for d in debits] + [5])
-        max_credit_width = max([len(str(c)) for c in credits] + [5])
+        # Print the header information
+        n = (27 - len(self.name + ' ' + str(self.number))) // 2
+        print(' ' * n + self.name + ' ' + str(self.number))
+        print('---------------------------')
 
-        # Determine the number of rows (max of debits and credits)
-        rows = max(len(debits), len(credits))
+        # Get lists for debits and credits
+        debits = [(row['Transaction'], f"{row['Amount']:,}") for _, row in self.iterrows() if row['Debit']]
+        credits = [(row['Transaction'], f"{row['Amount']:,}") for _, row in self.iterrows() if row['Debit'] == False]
 
-        # Header
-        print(f"{self.account_name:^width}")
-        print("-" * width)
-        print(f"{'Debits':<{max_debit_width}} | {'Credits':>{max_credit_width}}")
-        print("-" * width)
+        # Calculate the totals
+        left_total = sum(d.Amount for _, d in account.iterrows() if d.Debit)
+        right_total = sum(c.Amount for _, c in account.iterrows() if c.Debit == False)
+        left_sum = f'{left_total:,}'
+        right_sum = f'{right_total:,}'
 
-        # Rows
-        for i in range(rows):
-            debit = f"{debits[i]:>{max_debit_width}}" if i < len(debits) else " " * max_debit_width
-            credit = f"{credits[i]:>{max_credit_width}}" if i < len(credits) else " " * max_credit_width
-            print(f"{debit} | {credit}")
+        # Iterate through and print lines
+        while debits or credits:
+            debits, credits = self.print_line(debits, credits)
 
-        # Totals
-        total_debits = sum(debits)
-        total_credits = sum(credits)
-        print("-" * width)
-        print(f"{total_debits:>{max_debit_width}} | {total_credits:>{max_credit_width}}")
-        print("-" * width)
+        print('             |             ')
+        print(f'''     {' ' * (7 - len(left_sum))}{left_sum} | {' ' * (7 - len(right_sum))}{right_sum}''')
 
+        total = f'''{left_total - right_total:,}'''
+        print(f'''     {' ' * (7 - len(total))}{total}''')
 
-class ChartOfAccounts:
+    def print_line(self, debits: list, credits: list):
+        '''Prints one line in the print_account function'''
+
+        # Automatically assign values in case of nulls
+        d, c = (' ', '       '), (' ', '       ') 
+
+        # If there are remaining items get the first
+        if debits:
+            d = debits.pop(0)
+        if credits:
+            c = credits.pop(0)
+
+        # Build the left/right side of the print line
+        if d[0] != ' ':
+            left = f''' ({d[0]}) {' ' * (7 - len(d[1]))}{d[1]} '''
+        else:
+            left = f'''     {' ' * (7 - len(d[1]))}{d[1]} '''
+        if c[0] != ' ':
+            right = f''' {' ' * (7 - len(c[1]))}{c[1]} ({c[0]})'''
+        else:
+            right = f''' {' ' * (7 - len(c[1]))}{c[1]}    '''
+
+        # Join left/right and print
+        print('|'.join([left, right]))
+        
+        return debits, credits
+
+class BusinessAccounts:
     def __init__(self):
         self.accounts = {}
 
-    def add_account(self, account_number: int, account_name: str):
+    def add_account(self, name: str, number: int):
+        self.accounts[number] = Account(name, number)
+    
 
-        if len(account_name) > 32:
-            raise ValueError("Invalid account name")
-        if account_number in self.accounts.keys():
-            raise ValueError("Invalid account number")
-        if account_name in self.accounts.keys():
-            raise ValueError("Invalid account name")
+    def print_section_title(self, title: str):
+        '''Prints a section title'''
+        
+        n = int((80 - len(title)) // 2)
+        print(' ' * 80)
+        print('-' * 80)
+        line = ' ' * n + title + ' ' * (n)
+        while len(line) < 80:
+            line += ' '
+        print(' ' * n + title + ' ' * (n))
+        print('-' * 80)
+        print(' ' * 80)
 
-        self.accounts[account_number] = Account(account_name, leading_digit(account_number))
+    
+    def print_line(self, left: list, right: list) -> tuple[list]:
+        '''Prints one line'''
+    
+        l, r = '', ''
+        if left:
+            l = left.pop(0)
+        if right:
+            r = right.pop(0)
+    
+        m = 44 - len(l)
+        line = f'''  {l}{' ' * m}{r}'''
+        line += ' ' * (80 - len(line))
+        print(line)
+    
+        return left, right
+    
+    def chart_of_accounts(self):
+        '''Print a Chart of Accounts'''
+    
+        assets = [v for k, v in self.accounts.items() if v.type_ == 1]
+        liabilities = [v for k, v in self.accounts.items() if v.type_ == 2]
+        equities = [v for k, v in self.accounts.items() if v.type_ == 3]
+        revenues = [v for k, v in self.accounts.items() if v.type_ == 4]
+        expenses = [v for k, v in self.accounts.items() if v.type_ == 5]
 
-    def print_chart(self):
-        """Prints the charts"""
-        pass
+        # Print the Balance Sheet Accounts
+        self.print_section_title('Balance Sheet Accounts')
+        
+        left = ['Assets'] + [f'{x.number} {x.name}' for x in assets]
+        right = ['Liabilities'] + [f'{x.number} {x.name}' for x in liabilities] 
+        right += ['''Owner's Equity'''] + [f'{x.number} {x.name}' for x in equities]    
 
+        while left or right:
+            left, right = self.print_line(left, right)
 
-# def print_charts(assets, liabilities, equities, revenues, expenses):
+        # Print the Income Statement Accounts
+        self.print_section_title('Income Statement Accounts')
+    
+        left = ['Revenue'] + [f'{x.number} {x.name}' for x in revenues]
+        right = ['Expenses'] + [f'{x.number} {x.name}' for x in expenses] 
+        while left or right:
+            left, right = print_line(left, right)
 
-#     def print_title(title: str):
-#         n = int((80 - len(title)) // 2)
-#         print("-" * 80)
-#         print(" " * n + title + " " * (n))
-#         print("-" * 80)
-
-#     def print_two_columns(t1: list, t2: list):
-#         x = t1.pop(0)
-#         y = t2.pop(0)
-
-#         m = 40 - len(x[1])
-#         print(f"""  {x[0]} {x[1]}{' ' * m}{y[0]} {y[1]}""")
-
-#         return t1, t2
-
-#     def print_right_column(t2: list):
-#         y = t2.pop(0)
-
-#         print(f"""{' ' * 46}{y[0]} {y[1]}""")
-#         return t2
-
-#     print_title("Balance Sheet Accounts")
-
-#     print("  Assets" + " " * 38 + "Liabilities")
-#     while (assets) and (liabilities):
-#         assets, liabilities = print_two_columns(assets, liabilities)
-
-#     if assets:
-#         assets, _ = print_two_columns(assets, [("""Owner's Equity""", "")])
-#         while assets and equities:
-#             print_two_columns(assets, equities)
-#         if assets:
-#             while assets:
-#                 a = assets.pop(0)
-#                 print(f"  {a[0]} {a[1]}")
-#         elif equities:
-#             while equities:
-#                 equities = print_right_column(equities)
-#     elif liabilities:
-#         while liabilities:
-#             liabilities = print_right_column(liabilities)
-#         print(" " * 46 + """Owner's Equity""")
-#         while equities:
-#             equities = print_right_column(equities)
-#     else:
-#         while equities:
-#             equities = print_right_column(equities)
-
-#     print_title("Income Statement Accounts")
-#     print("  Revenue" + " " * 37 + "Expenses")
-#     for i in range(max(len(revenues), len(expenses))):
-#         if i < len(revenues):
-#             r = revenues[i]
-#         else:
-#             r = ("   ", "")
-#         if i < len(expenses):
-#             e = expenses[i]
-#         else:
-#             e = ("   ", "")
-
-#         m = 40 - len(r[1])
-#         print(f"""  {r[0]} {r[1]}{' ' * m}{e[0]} {e[1]}""")
