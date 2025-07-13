@@ -91,14 +91,14 @@ class BusinessAccounts:
         """Prints a section title"""
 
         n = int((80 - len(title)) // 2)
-        print(" " * 80)
+        print("\n")
         print("-" * 80)
         line = " " * n + title + " " * (n)
         while len(line) < 80:
             line += " "
         print(" " * n + title + " " * (n))
         print("-" * 80)
-        print(" " * 80)
+        print("\n")
 
     def print_line(self, left: list, right: list) -> tuple[list]:
         """Prints one line"""
@@ -119,6 +119,7 @@ class BusinessAccounts:
     def chart_of_accounts(self):
         """Print a Chart of Accounts"""
 
+        # Separate the different types of accounts
         assets = [v for k, v in self.accounts.items() if v.type_ == 1]
         liabilities = [v for k, v in self.accounts.items() if v.type_ == 2]
         equities = [v for k, v in self.accounts.items() if v.type_ == 3]
