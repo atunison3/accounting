@@ -5,7 +5,7 @@ __all__ = ["SpreadSheet", "Transaction"]
 
 
 class AccountingRow:
-    def __init__(  #noqa: PLR0913
+    def __init__(  # noqa: PLR0913
         self,
         date: datetime,
         cash: float = 0,
