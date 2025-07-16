@@ -51,7 +51,8 @@ class SQLiteRepository(BaseSQLiteRepository):
                 t.transaction_id,
                 e.date,
                 e.description,
-                a.name || ' ' || a.number,
+                a.name,
+                a.number,
                 t.debit,
                 t.credit
             FROM transactions t
@@ -64,7 +65,6 @@ class SQLiteRepository(BaseSQLiteRepository):
         cursor.execute(sql, (from_, to_))
 
         results = cursor.fetchall()
-        print(len(results))
 
         self._disconnect()
 
