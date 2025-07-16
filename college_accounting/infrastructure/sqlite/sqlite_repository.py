@@ -37,24 +37,27 @@ class SQLiteRepository(BaseSQLiteRepository):
                 else:
                     print('📦 Empty database created (no schema).')
 
-    def get_journal(self, from_: datetime, to_: datetime = datetime.today()) -> list:
+    def get_journal(self, from_: datetime, to_: datetime = None) -> list:
         '''Gets information for a journal'''
+
+        if not to_:
+            to_ = datetime.today()
 
         cursor = self._connect()
 
         sql = '''
-            SELECT 
-                e.entry_id, 
+            SELECT
+                e.entry_id,
                 t.transaction_id,
-                e.date, 
-                e.description, 
+                e.date,
+                e.description,
                 a.name || ' ' || a.number,
-                t.debit, 
+                t.debit,
                 t.credit
             FROM transactions t
             JOIN entries e ON t.entry_id = e.entry_id
             JOIN accounts a ON t.account_number = a.number
-            WHERE 
+            WHERE
                 e.date >= ? AND
                 e.date <= ?
             '''
@@ -62,7 +65,7 @@ class SQLiteRepository(BaseSQLiteRepository):
 
         results = cursor.fetchall()
         print(len(results))
-        
+
         self._disconnect()
 
         return results

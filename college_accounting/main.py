@@ -98,9 +98,7 @@ if __name__ == '__main__':
 
     # 4th: Bought equipment for cash, $200
     entry = Entry(
-        entry_id=0, 
-        date=datetime(2010, 3, 4), 
-        description='Bought equipment for cash, $200'
+        entry_id=0, date=datetime(2010, 3, 4), description='Bought equipment for cash, $200'
     )
     entry = sqlite_repo.entries.add(entry)
     transaction1 = Transaction(
@@ -112,12 +110,12 @@ if __name__ == '__main__':
     transaction1 = sqlite_repo.transactions.add(transaction1)
     transaction2 = sqlite_repo.transactions.add(transaction2)
 
-    # 5th: Earned employment fee commission, $200, but payment from Blue Co. will not be 
+    # 5th: Earned employment fee commission, $200, but payment from Blue Co. will not be
     # received unil June
     entry = Entry(
-        entry_id=0, 
-        date=datetime(2010, 3, 5), 
-        description='Earned employment fee commission, $200, but payment from Blue Co. will not be received until June'
+        entry_id=0,
+        date=datetime(2010, 3, 5),
+        description='Earned employment fee commission, $200, but payment from Blue Co. will not be received until June',
     )
     entry = sqlite_repo.entries.add(entry)
     transaction1 = Transaction(
@@ -130,11 +128,7 @@ if __name__ == '__main__':
     transaction2 = sqlite_repo.transactions.add(transaction2)
 
     # 6th
-    entry = Entry(
-        entry_id=0, 
-        date=datetime(2010, 3, 6), 
-        description='Paid wages expense, $300'
-    )
+    entry = Entry(entry_id=0, date=datetime(2010, 3, 6), description='Paid wages expense, $300')
     entry = sqlite_repo.entries.add(entry)
     t1 = Transaction(
         transaction_id=0, entry_id=entry.entry_id, account_number=511, debit=300, credit=0
@@ -145,11 +139,7 @@ if __name__ == '__main__':
     t1 = sqlite_repo.transactions.add(t1)
     t2 = sqlite_repo.transactions.add(t2)
 
-    entry = Entry(
-        entry_id=0, 
-        date=datetime(2010, 3, 7), 
-        description='Personal Withdrawals'
-    )
+    entry = Entry(entry_id=0, date=datetime(2010, 3, 7), description='Personal Withdrawals')
     entry = sqlite_repo.entries.add(entry)
     t1 = Transaction(
         transaction_id=0, entry_id=entry.entry_id, account_number=321, debit=300, credit=0
@@ -161,14 +151,17 @@ if __name__ == '__main__':
     t2 = sqlite_repo.transactions.add(t2)
 
     # Journal
-    journal = sqlite_repo.get_journal(
-        datetime(2010, 3, 1), 
-        datetime(2010, 3, 31)
-    )
+    journal = sqlite_repo.get_journal(datetime(2010, 3, 1), datetime(2010, 3, 31))
     i = None
-    print(f'''     Date    |  Account Titles and Description             | PR  |     Dr     |     Cr     |''')
-    print(f'''--------------------------------------------------------------------------------------------''')
-    print(f'''{journal[0][2][:7]} |    |                                             |     |            |            |''')
+    print(
+        '     Date    |  Account Titles and Description             | PR  |     Dr     |     Cr     |'
+    )
+    print(
+        '--------------------------------------------------------------------------------------------'
+    )
+    print(
+        f'''{journal[0][2][:7]} |    |                                             |     |            |            |'''
+    )
     for line in journal:
 
         if not i:
@@ -176,13 +169,12 @@ if __name__ == '__main__':
 
             day = line[2][8:10]
             title = line[4]
-            
-        else:
-            if line[2] != i:
-                day = '  '
-                title = '  ' + line[4]
-                i = None 
-        
+
+        elif line[2] != i:
+            day = '  '
+            title = '  ' + line[4]
+            i = None
+
         n_title = 43 - len(title)
         if line[5] == 0:
             dr = ''
@@ -194,13 +186,14 @@ if __name__ == '__main__':
             dr = f'{line[5]:.2f}'
             n_dr = 10 - len(dr)
             n_cr = 10
-        print(f'''        | {day} | {title + ' ' * n_title} |     | {' ' * n_dr + dr} | {' ' * n_cr + cr} |''')
+        print(
+            f'''        | {day} | {title + ' ' * n_title} |     | {' ' * n_dr + dr} | {' ' * n_cr + cr} |'''
+        )
 
         if not i:
             n_title = 40 - len(line[3][:40])
-            print(f'''        |    |    {line[3][:40] + ' ' * n_title} |     |            |            |''')
-            
-        
-
+            print(
+                f'''        |    |    {line[3][:40] + ' ' * n_title} |     |            |            |'''
+            )
 
     delete_database(db_path)

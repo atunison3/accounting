@@ -35,8 +35,10 @@ class Account(pd.DataFrame):
         # Get lists for debits and credits
         debits = [(r["Transaction"], f"{r['Amount']:,}") for _, r in self.iterrows() if r["Debit"]]
         credits = [
-            (r["Transaction"], f"{r['Amount']:,}") for r in self.values() if r["Debit"] == False
-        ]  # noqa: E712
+            (r["Transaction"], f"{r['Amount']:,}")
+            for r in self.values()
+            if r["Debit"] == False  # noqa: E712
+        ]
 
         # Calculate the totals
         left_total = sum(d.Amount for _, d in self.iterrows() if d.Debit)
