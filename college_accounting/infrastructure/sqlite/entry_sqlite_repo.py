@@ -12,17 +12,17 @@ class SQLiteEntryRepository(EntryRepository, BaseSqliteRepository):
 
         cursor = self._connect()
 
-        sql = "INSERT INTO entries (date, description) VALUES (?, ?);"
+        sql = 'INSERT INTO entries (date, description) VALUES (?, ?);'
         cursor.execute(sql, (entry.date, entry.description))
 
         self._disconnect()
 
     def get_by_id(self, entry_id: int) -> Entry:
-        """Gets an entry by id"""
+        '''Gets an entry by id'''
 
         cursor = self._connect()
 
-        sql = "SELECT * FROM entries WHERE entry_id = ?;"
+        sql = 'SELECT * FROM entries WHERE entry_id = ?;'
         cursor.execute(sql, (entry_id,))
 
         entry = None
@@ -38,7 +38,7 @@ class SQLiteEntryRepository(EntryRepository, BaseSqliteRepository):
 
         cursor = self._connect()
 
-        sql = "SELECT * FROM entries;"
+        sql = 'SELECT * FROM entries;'
         cursor.execute(sql)
 
         entrys = []
@@ -54,6 +54,6 @@ class SQLiteEntryRepository(EntryRepository, BaseSqliteRepository):
     def delete(self, entry_id: int):
 
         cursor = self._connect()
-        sql = "DELETE FROM entries WHERE entry_id = ?;"
+        sql = 'DELETE FROM entries WHERE entry_id = ?;'
         cursor.execute(sql, (entry_id,))
         self._disconnect()

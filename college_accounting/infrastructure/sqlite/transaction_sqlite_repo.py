@@ -28,7 +28,9 @@ class SQLiteTransactionRepository(TransactionRepository, BaseSqliteRepository):
         transaction = None
 
         if result := cursor.fetchone():
-            transaction = Transaction(transaction_id=result[0], entry_id=result[1], account_id=result[2], debit=result[3], credit=result[4])
+            transaction = Transaction(
+                transaction_id=result[0], entry_id=result[1], account_id=result[2], debit=result[3], credit=result[4]
+            )
 
         self._disconnect()
 
@@ -44,7 +46,13 @@ class SQLiteTransactionRepository(TransactionRepository, BaseSqliteRepository):
         transactions = []
         if results := cursor.fetchall():
             for result in results:
-                transaction = Transaction(transaction_id=result[0], entry_id=result[1], account_id=result[2], debit=result[3], credit=result[4])
+                transaction = Transaction(
+                    transaction_id=result[0],
+                    entry_id=result[1],
+                    account_id=result[2],
+                    debit=result[3],
+                    credit=result[4],
+                )
                 transactions.append(transaction)
 
         self._disconnect()

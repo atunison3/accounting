@@ -12,17 +12,17 @@ class SQLiteAccountRepository(AccountRepository, BaseSqliteRepository):
 
         cursor = self._connect()
 
-        sql = "INSERT INTO accounts (number, name, type_) VALUES (?, ?, ?);"
+        sql = 'INSERT INTO accounts (number, name, type_) VALUES (?, ?, ?);'
         cursor.execute(sql, (account.number, account.name, account.type_))
 
         self._disconnect()
 
     def get_by_id(self, account_id: int) -> Account:
-        """Gets an account by id"""
+        '''Gets an account by id'''
 
         cursor = self._connect()
 
-        sql = "SELECT * FROM accounts WHERE account_id = ?;"
+        sql = 'SELECT * FROM accounts WHERE account_id = ?;'
         cursor.execute(sql, (account_id,))
 
         account = None
@@ -38,7 +38,7 @@ class SQLiteAccountRepository(AccountRepository, BaseSqliteRepository):
 
         cursor = self._connect()
 
-        sql = "SELECT * FROM accounts;"
+        sql = 'SELECT * FROM accounts;'
         cursor.execute(sql)
 
         accounts = []
@@ -54,6 +54,6 @@ class SQLiteAccountRepository(AccountRepository, BaseSqliteRepository):
     def delete(self, account_id: int):
 
         cursor = self._connect()
-        sql = "DELETE FROM accounts WHERE account_id = ?;"
+        sql = 'DELETE FROM accounts WHERE account_id = ?;'
         cursor.execute(sql, (account_id,))
         self._disconnect()
