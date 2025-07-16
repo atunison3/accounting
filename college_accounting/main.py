@@ -71,9 +71,10 @@ if __name__ == '__main__':
         except IntegrityError:
             print(f'''Account {number} {name} already added''')
     
-    for i in range(len(accounts_to_make)):
+    for i in range(1, len(accounts_to_make) + 1):
         account = sqlite_repo.accounts.get_by_id(i)
         print(f'''{account.number} {account.name}''')
+        sqlite_repo.accounts.delete(i)
 
     # Add the account to the database
 

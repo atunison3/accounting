@@ -3,6 +3,8 @@ import os
 import sqlite3
 
 from infrastructure.sqlite.account_sqlite_repo import SQLiteAccountRepository
+from infrastructure.sqlite.entry_sqlite_repo import SQLiteEntryRepository
+from infrastructure.sqlite.transaction_sqlite_repo import SQLiteTransactionRepository
 from infrastructure.sqlite._core import schema_sql
 
 
@@ -12,6 +14,8 @@ class SQLiteRepository:
         self.db_path = db_path
         self._schema_sql = schema_sql
         self.accounts = SQLiteAccountRepository(db_path)
+        self.entries = SQLiteEntryRepository(db_path)
+        self.transactions = SQLiteTransactionRepository(db_path)
 
         self.ensure_db_exists()
 

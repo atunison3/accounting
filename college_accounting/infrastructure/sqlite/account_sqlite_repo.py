@@ -24,22 +24,22 @@ class SQLiteAccountRepository(AccountRepository, BaseSqliteRepository):
 
         sql = "SELECT * FROM accounts WHERE account_id = ?;"
         cursor.execute(sql, (account_id,))
-        self._disconnect()
 
         account = None
 
         if result := cursor.fetchone():
             account = Account(account_id=result[0], number=result[1], name=result[2], type_=result[3])
 
+        self._disconnect()
+
         return account
 
-    def list_all(self) -> list[tuple]:
+    def list_all(self) -> list[Account]:
 
         cursor = self._connect()
 
         sql = "SELECT * FROM accounts;"
         cursor.execute(sql)
-        self._disconnect()
 
         accounts = []
         if results := cursor.fetchall():
@@ -47,11 +47,13 @@ class SQLiteAccountRepository(AccountRepository, BaseSqliteRepository):
                 account = Account(account_id=result[0], number=result[1], name=result[2], type_=result[3])
                 accounts.append(account)
 
+        self._disconnect()
+
         return accounts
 
     def delete(self, account_id: int):
 
         cursor = self._connect()
         sql = "DELETE FROM accounts WHERE account_id = ?;"
-        cursor.execute(sql)
+        cursor.execute(sql, (account_id,))
         self._disconnect()

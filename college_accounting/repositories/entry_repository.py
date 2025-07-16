@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
 
-from ..domain.entry import Entry
+from domain.entry import Entry
 
 
-class AccountRepository(ABC):
+class EntryRepository(ABC):
 
     @abstractmethod
     def add(self, entry: Entry) -> None:
