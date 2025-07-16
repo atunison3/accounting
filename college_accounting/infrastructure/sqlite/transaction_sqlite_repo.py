@@ -1,35 +1,52 @@
 from domain.transaction import Transaction
 from repositories.transaction_repository import TransactionRepository
-from infrastructure.sqlite._core import BaseSqliteRepository
+from infrastructure.sqlite._core import BaseSQLiteRepository
 
 
-class SQLiteTransactionRepository(TransactionRepository, BaseSqliteRepository):
+class SQLiteTransactionRepository(TransactionRepository, BaseSQLiteRepository):
 
-    def __init__(self, db_file: str):
-        self.db_file = db_file
+    def __init__(self, db_path: str):
+        self.db_path = db_path
 
-    def add(self, transaction: Transaction):
+    def add(self, transaction: Transaction) -> Transaction:
 
         cursor = self._connect()
 
-        sql = 'INSERT INTO transctions (entry_id, account_id, debit, credit) VALUES (?, ?, ?, ?);'
-        cursor.execute(sql, (transaction.entry_id, transaction.account_id, transaction.debit, transaction.credit))
+        sql = 'INSERT INTO transactions (account_number, entry_id, debit, credit) VALUES (?, ?, ?, ?);'
+        cursor.execute(
+            sql,
+            (
+                transaction.account_number,
+                transaction.entry_id,
+                transaction.debit,
+                transaction.credit,
+            ),
+        )
+
+        # Update the transaction id
+        transaction.transaction_id = cursor.lastrowid
 
         self._disconnect()
+
+        return transaction
 
     def get_by_id(self, transaction_id: int) -> Transaction:
         '''Gets an transaction by id'''
 
         cursor = self._connect()
 
-        sql = 'SELECT * FROM transctions WHERE transaction_id = ?;'
+        sql = 'SELECT * FROM transactions WHERE transaction_id = ?;'
         cursor.execute(sql, (transaction_id,))
 
         transaction = None
 
         if result := cursor.fetchone():
             transaction = Transaction(
-                transaction_id=result[0], entry_id=result[1], account_id=result[2], debit=result[3], credit=result[4]
+                transaction_id=result[0],
+                entry_id=result[1],
+                account_number=result[2],
+                debit=result[3],
+                credit=result[4],
             )
 
         self._disconnect()
@@ -40,7 +57,7 @@ class SQLiteTransactionRepository(TransactionRepository, BaseSqliteRepository):
 
         cursor = self._connect()
 
-        sql = 'SELECT * FROM transctions;'
+        sql = 'SELECT * FROM transactions;'
         cursor.execute(sql)
 
         transactions = []
@@ -49,7 +66,7 @@ class SQLiteTransactionRepository(TransactionRepository, BaseSqliteRepository):
                 transaction = Transaction(
                     transaction_id=result[0],
                     entry_id=result[1],
-                    account_id=result[2],
+                    account_number=result[2],
                     debit=result[3],
                     credit=result[4],
                 )
@@ -62,6 +79,6 @@ class SQLiteTransactionRepository(TransactionRepository, BaseSqliteRepository):
     def delete(self, transaction_id: int):
 
         cursor = self._connect()
-        sql = 'DELETE FROM transctions WHERE transaction_id = ?;'
+        sql = 'DELETE FROM transactions WHERE transaction_id = ?;'
         cursor.execute(sql, (transaction_id,))
         self._disconnect()

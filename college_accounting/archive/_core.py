@@ -99,7 +99,10 @@ class SpreadSheet(pd.DataFrame):
         if len(self) == 0:
             return 0
         n = len(self) - 1  # get the last row (Balance)
-        return sum(self.loc[n, col] for col in ["Cash", "Supplies", "Computer Shop Equipment", "Office Equipment"])
+        return sum(
+            self.loc[n, col]
+            for col in ["Cash", "Supplies", "Computer Shop Equipment", "Office Equipment"]
+        )
 
     @property
     def total_liabilities(self):
@@ -143,7 +146,11 @@ class SpreadSheet(pd.DataFrame):
             else {col: 0 for col in self.columns}
         )
 
-        balance_row = Balance(date=accounting_row.date, prev_balance=prev_balance, transaction=accounting_row.to_dict())
+        balance_row = Balance(
+            date=accounting_row.date,
+            prev_balance=prev_balance,
+            transaction=accounting_row.to_dict(),
+        )
 
         # Append the balance row
         balance_df = pd.DataFrame([balance_row.to_dict()])

@@ -1,12 +1,12 @@
 from domain.entry import Entry
 from repositories.entry_repository import EntryRepository
-from infrastructure.sqlite._core import BaseSqliteRepository
+from infrastructure.sqlite._core import BaseSQLiteRepository
 
 
-class SQLiteEntryRepository(EntryRepository, BaseSqliteRepository):
+class SQLiteEntryRepository(EntryRepository, BaseSQLiteRepository):
 
-    def __init__(self, db_file: str):
-        self.db_file = db_file
+    def __init__(self, db_path: str) -> Entry:
+        self.db_path = db_path
 
     def add(self, entry: Entry):
 
@@ -15,7 +15,12 @@ class SQLiteEntryRepository(EntryRepository, BaseSqliteRepository):
         sql = 'INSERT INTO entries (date, description) VALUES (?, ?);'
         cursor.execute(sql, (entry.date, entry.description))
 
+        # Update the entry's id
+        entry.entry_id = cursor.lastrowid
+
         self._disconnect()
+
+        return entry
 
     def get_by_id(self, entry_id: int) -> Entry:
         '''Gets an entry by id'''

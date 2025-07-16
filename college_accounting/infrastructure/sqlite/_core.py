@@ -1,12 +1,12 @@
 import sqlite3
 
 
-class BaseSqliteRepository:
-    def __init__(self, db_file: str):
-        self.db_file = db_file
+class BaseSQLiteRepository:
+    def __init__(self, db_path: str):
+        self.db_path = db_path
 
     def _connect(self):
-        self.conn = sqlite3.connect(self.db_file)
+        self.conn = sqlite3.connect(self.db_path)
         cursor = self.conn.cursor()
 
         return cursor
@@ -26,18 +26,17 @@ CREATE TABLE IF NOT EXISTS accounts (
 
 CREATE TABLE IF NOT EXISTS entries (
     entry_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    date TEXT NOT NULL,
+    date DATE NOT NULL,
     description TEXT
 );
 
 CREATE TABLE IF NOT EXISTS transactions (
     transaction_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    amount REAL NOT NULL,
-    is_debit BOOLEAN NOT NULL,
-    account_id INTEGER NOT NULL,
     entry_id INTEGER NOT NULL,
-    date TEXT NOT NULL,
-    FOREIGN KEY (account_id) REFERENCES accounts (id),
-    FOREIGN KEY (entry_id) REFERENCES entries (id)
+    account_number INTEGER NOT NULL,
+    debit REAL,
+    credit REAL,
+    FOREIGN KEY (account_number) REFERENCES accounts (number),
+    FOREIGN KEY (entry_id) REFERENCES entries (entry_id)
 );
 '''
