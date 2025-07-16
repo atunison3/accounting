@@ -1,6 +1,10 @@
-from ..domain.journal import Journal 
+from abc import ABC, abstractmethod
 
-class JournalRepository:
+from ..domain.transaction import Transaction
+
+
+class TransactionRepository(ABC):
+    """Abstract base class for transaction repositories."""
 
     @abstractmethod
     def add(self, transaction: Transaction) -> None:
@@ -13,7 +17,7 @@ class JournalRepository:
         pass
 
     @abstractmethod
-    def list_all(self) -> List[Transaction]:
+    def list_all(self) -> list[Transaction]:
         """Return all transactions."""
         pass
 

@@ -1,14 +1,8 @@
-from datetime import datetime 
+from pydantic import BaseModel
 
-__all__ = [
-    'Transaction'
-]
 
-class Transaction:
-    def __init__(self, transaction_id: int, date: datetime, account: Account, amount: int, is_debit: bool):
-
-        self.transaction_id = transaction_id
-        self.date = date 
-        self.account = account
-        self.amount = amount 
-        self.is_debit = is_debit
+class Transaction(BaseModel):
+    entry_id: int
+    account_id: int
+    debit: float = None
+    credit: float = None
