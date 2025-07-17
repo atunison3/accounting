@@ -4,16 +4,12 @@ import sqlite3
 class BaseSQLiteRepository:
     def __init__(self, db_path: str):
         self.db_path = db_path
+        self.conn = None
 
     def _connect(self):
-        self.conn = sqlite3.connect(self.db_path)
-        cursor = self.conn.cursor()
-
-        return cursor
-
-    def _disconnect(self):
-        self.conn.commit()
-        self.conn.close()
+        conn = sqlite3.connect(self.db_path, timeout=10)
+        conn.execute("PRAGMA journal_mode=WAL;")  # Enable Write-Ahead Logging
+        return conn
 
 
 schema_sql = '''

@@ -9,56 +9,40 @@ class SQLiteEntryRepository(EntryRepository, BaseSQLiteRepository):
         self.db_path = db_path
 
     def add(self, entry: Entry):
-
-        cursor = self._connect()
-
-        sql = 'INSERT INTO entries (date, description) VALUES (?, ?);'
-        cursor.execute(sql, (entry.date, entry.description))
-
-        # Update the entry's id
-        entry.entry_id = cursor.lastrowid
-
-        self._disconnect()
-
+        with self._connect() as conn:
+            cursor = conn.cursor()
+            sql = 'INSERT INTO entries (date, description) VALUES (?, ?);'
+            cursor.execute(sql, (entry.date, entry.description))
+            entry.entry_id = cursor.lastrowid
+            conn.commit()
         return entry
 
     def get_by_id(self, entry_id: int) -> Entry:
         '''Gets an entry by id'''
 
-        cursor = self._connect()
-
-        sql = 'SELECT * FROM entries WHERE entry_id = ?;'
-        cursor.execute(sql, (entry_id,))
-
-        entry = None
-
-        if result := cursor.fetchone():
-            entry = Entry(entry_id=result[0], date=result[1], description=result[2])
-
-        self._disconnect()
-
-        return entry
+        with self._connect() as conn:
+            cursor = conn.cursor()
+            sql = 'SELECT * FROM entries WHERE entry_id = ?;'
+            cursor.execute(sql, (entry_id,))
+            row = cursor.fetchone()
+            if row:
+                return Entry(entry_id=row[0], date=row[1], description=row[2])
+            return None
 
     def list_all(self) -> list[Entry]:
-
-        cursor = self._connect()
-
-        sql = 'SELECT * FROM entries;'
-        cursor.execute(sql)
-
-        entrys = []
-        if results := cursor.fetchall():
-            for result in results:
-                entry = Entry(entry_id=result[0], date=result[1], description=result[2])
-                entrys.append(entry)
-
-        self._disconnect()
-
-        return entrys
+        entries = []
+        with self._connect() as conn:
+            cursor = conn.cursor()
+            sql = 'SELECT * FROM entries;'
+            cursor.execute(sql)
+            for row in cursor.fetchall():
+                entries.append(Entry(entry_id=row[0], date=row[1], description=row[2]))
+        return entries
 
     def delete(self, entry_id: int):
 
-        cursor = self._connect()
-        sql = 'DELETE FROM entries WHERE entry_id = ?;'
-        cursor.execute(sql, (entry_id,))
-        self._disconnect()
+        with self._connect() as conn:
+            cursor = conn.cursor()
+            sql = 'DELETE FROM entries WHERE entry_id = ?;'
+            cursor.execute(sql, (entry_id,))
+            conn.commit()

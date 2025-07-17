@@ -43,29 +43,26 @@ class SQLiteRepository(BaseSQLiteRepository):
         if not to_:
             to_ = datetime.today()
 
-        cursor = self._connect()
-
-        sql = '''
-            SELECT
-                e.entry_id,
-                t.transaction_id,
-                e.date,
-                e.description,
-                a.name,
-                a.number,
-                t.debit,
-                t.credit
-            FROM transactions t
-            JOIN entries e ON t.entry_id = e.entry_id
-            JOIN accounts a ON t.account_number = a.number
-            WHERE
-                e.date >= ? AND
-                e.date <= ?
-            '''
-        cursor.execute(sql, (from_, to_))
-
-        results = cursor.fetchall()
-
-        self._disconnect()
+        with self._connect() as conn:
+            cursor = conn.cursor()
+            sql = '''
+                SELECT
+                    e.entry_id,
+                    t.transaction_id,
+                    e.date,
+                    e.description,
+                    a.name,
+                    a.number,
+                    t.debit,
+                    t.credit
+                FROM transactions t
+                JOIN entries e ON t.entry_id = e.entry_id
+                JOIN accounts a ON t.account_number = a.number
+                WHERE
+                    e.date >= ? AND
+                    e.date <= ?
+                '''
+            cursor.execute(sql, (from_, to_))
+            results = cursor.fetchall()
 
         return results

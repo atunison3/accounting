@@ -9,76 +9,66 @@ class SQLiteTransactionRepository(TransactionRepository, BaseSQLiteRepository):
         self.db_path = db_path
 
     def add(self, transaction: Transaction) -> Transaction:
-
-        cursor = self._connect()
-
-        sql = 'INSERT INTO transactions (account_number, entry_id, debit, credit) VALUES (?, ?, ?, ?);'
-        cursor.execute(
-            sql,
-            (
-                transaction.account_number,
-                transaction.entry_id,
-                transaction.debit,
-                transaction.credit,
-            ),
-        )
-
-        # Update the transaction id
-        transaction.transaction_id = cursor.lastrowid
-
-        self._disconnect()
-
+        with self._connect() as conn:
+            cursor = conn.cursor()
+            sql = '''
+                INSERT INTO transactions (account_number, entry_id, debit, credit)
+                VALUES (?, ?, ?, ?);
+            '''
+            cursor.execute(
+                sql,
+                (
+                    transaction.account_number,
+                    transaction.entry_id,
+                    transaction.debit,
+                    transaction.credit,
+                ),
+            )
+            transaction.transaction_id = cursor.lastrowid
+            conn.commit()
         return transaction
 
     def get_by_id(self, transaction_id: int) -> Transaction:
         '''Gets an transaction by id'''
 
-        cursor = self._connect()
-
-        sql = 'SELECT * FROM transactions WHERE transaction_id = ?;'
-        cursor.execute(sql, (transaction_id,))
-
-        transaction = None
-
-        if result := cursor.fetchone():
-            transaction = Transaction(
-                transaction_id=result[0],
-                entry_id=result[1],
-                account_number=result[2],
-                debit=result[3],
-                credit=result[4],
-            )
-
-        self._disconnect()
-
-        return transaction
+        with self._connect() as conn:
+            cursor = conn.cursor()
+            sql = 'SELECT * FROM transactions WHERE transaction_id = ?;'
+            cursor.execute(sql, (transaction_id,))
+            row = cursor.fetchone()
+            if row:
+                return Transaction(
+                    transaction_id=row[0],
+                    entry_id=row[1],
+                    account_number=row[2],
+                    debit=row[3],
+                    credit=row[4],
+                )
+            return None
 
     def list_all(self) -> list[Transaction]:
 
-        cursor = self._connect()
-
-        sql = 'SELECT * FROM transactions;'
-        cursor.execute(sql)
-
         transactions = []
-        if results := cursor.fetchall():
-            for result in results:
-                transaction = Transaction(
-                    transaction_id=result[0],
-                    entry_id=result[1],
-                    account_number=result[2],
-                    debit=result[3],
-                    credit=result[4],
+        with self._connect() as conn:
+            cursor = conn.cursor()
+            sql = 'SELECT * FROM transactions;'
+            cursor.execute(sql)
+            for row in cursor.fetchall():
+                transactions.append(
+                    Transaction(
+                        transaction_id=row[0],
+                        entry_id=row[1],
+                        account_number=row[2],
+                        debit=row[3],
+                        credit=row[4],
+                    )
                 )
-                transactions.append(transaction)
-
-        self._disconnect()
-
         return transactions
 
     def delete(self, transaction_id: int):
 
-        cursor = self._connect()
-        sql = 'DELETE FROM transactions WHERE transaction_id = ?;'
-        cursor.execute(sql, (transaction_id,))
-        self._disconnect()
+        with self._connect() as conn:
+            cursor = conn.cursor()
+            sql = 'DELETE FROM transactions WHERE transaction_id = ?;'
+            cursor.execute(sql, (transaction_id,))
+            conn.commit()

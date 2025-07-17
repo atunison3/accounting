@@ -48,7 +48,7 @@ logger = get_logger('accounting')
 
 if __name__ == '__main__':
 
-    db_path = '/Users/andrewtunison/accounting.db'
+    db_path = '/Users/accounting.db'
     sqlite_repo = SQLiteRepository(db_path)
 
     # Configure accounts to make

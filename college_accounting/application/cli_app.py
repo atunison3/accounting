@@ -1,9 +1,10 @@
-import re
+# import re
 
 from datetime import datetime
 
 from domain.account import Account
 from domain.entry import Entry
+from domain.journal import JournalEntry
 from domain.transaction import Transaction
 from infrastructure.sqlite.sqlite_repository import SQLiteRepository
 
@@ -12,25 +13,28 @@ def is_valid_date(date: str):
 
     if len(date) != 10:
         return False
-    if not re.findall(r'\d{4}-\d{2}-\d{2}'):
+    # if not re.findall(r'\d{4}-\d{2}-\d{2}'):
+    #     return False
+    if date[4] != '-' or date[7] != '-':
         return False
 
     return True
 
 
-class Application:
+class CLIApp:
     def __init__(self, db_path: str):
         self.repo = SQLiteRepository(db_path)
 
-    def add_account(self, number: int, name: str):
+    def add_account(self, number: str | int, name: str):
         '''Creates an account'''
 
         # Data integrity
-        if not isinstance(number, int):
+        if not isinstance(number, int | str):
             raise TypeError('invalid number type')
         if not isinstance(name, str):
             raise TypeError('invalid name type')
 
+        number = int(number)
         if number < 100:
             raise ValueError('invalid number (number > 99)')
 
@@ -98,6 +102,24 @@ class Application:
 
         return entry
 
+    def add_journal(self, date: str, description: str, transactions_list: list):
+        '''Makes a journal entry and adds associated transactions'''
+
+        # Add the entry
+        try:
+            entry = self.add_entry(date, description)
+        except Exception as e:
+            print(f'Error: {e}')
+
+        # Iterate through transactions and add them
+        for transaction_row in transactions_list:
+            account_number, debit, credit = transaction_row
+            try:
+                _ = self.add_transaction(entry.entry_id, account_number, debit, credit)
+            except Exception as e:
+                print(f'Error: {e}')
+
+    # Printing functions
     def chart_of_accounts(self):
         '''Print a chart of accounts'''
 
@@ -116,3 +138,50 @@ class Application:
         print_types('  Capital Accounts', 3)
         print_types('  Revenue Accounts', 4)
         print_types('  Expense Accounts', 5)
+
+    def print_journal(self, from_: str, to_: str):
+        '''Prints journal entries'''
+
+        if (not isinstance(from_, str)) or (not isinstance(to_, str | None)):
+            raise TypeError('invalid date type(s)')
+        if (not is_valid_date(from_)) or (not is_valid_date(to_)):
+            raise ValueError('invalid date(s)')
+
+        # Convert to datetime
+        from_ = datetime.strptime(from_, '%Y-%m-%d')
+        to_ = datetime.strptime(to_, '%Y-%m-%d')
+        entries = self.repo.get_journal(from_, to_)
+
+        # Convert entries to journal entries
+        journal_entries = []
+        last_id = 0
+        for entry in entries:
+            this_id = entry[0]
+            if this_id != last_id:
+                # New entry id (need to create a new journal entry)
+                last_id = this_id
+                journal_entry = JournalEntry(
+                    entry_id=this_id,
+                    date=entry[2],
+                    description=entry[3],
+                    debits=[(entry[4], entry[5], entry[6])],
+                    credits=[],
+                )
+                journal_entries.append(journal_entry)
+            elif entry[6] != 0:
+                # Same entry adding another debit
+                journal_entries[-1].debits.append((entry[4], entry[5], entry[6]))
+            else:
+                # Same entry adding the credits
+                journal_entries[-1].credits.append((entry[4], entry[5], entry[7]))
+
+        # Try printing
+        print()
+        print(
+            f'''   Date  |  {'Account Titles and Description' + ' ' * 49}| PR  |    Dr.    |   Cr.    '''
+        )
+        print('-' * 120)
+        print(f'''         |{' ' * 81}|     |           |          ''')
+        for journal_entry in journal_entries:
+            journal_entry.print_to_terminal()
+        print()
