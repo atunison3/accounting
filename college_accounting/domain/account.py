@@ -6,3 +6,4 @@ class Account(BaseModel):
     number: int
     name: str
     type_: int
+    is_active: bool

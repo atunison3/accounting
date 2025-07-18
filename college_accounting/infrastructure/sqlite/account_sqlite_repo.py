@@ -22,23 +22,40 @@ class SQLiteAccountRepository(AccountRepository, BaseSQLiteRepository):
 
         with self._connect() as conn:
             cursor = conn.cursor()
-            sql = 'SELECT * FROM accounts WHERE account_id = ?;'
+            sql = '''
+            SELECT * 
+            FROM accounts 
+            WHERE 
+                account_id = ?;
+            '''
             cursor.execute(sql, (account_id,))
             row = cursor.fetchone()
             if row:
-                return Account(account_id=row[0], number=row[1], name=row[2], type_=row[3])
+                return Account(
+                    account_id=row[0], number=row[1], name=row[2], type_=row[3], is_active=row[4]
+                )
             return None
 
-    def list_all(self) -> list[Account]:
+    def list_all_active(self) -> list[Account]:
 
         accounts = []
         with self._connect() as conn:
             cursor = conn.cursor()
-            sql = 'SELECT * FROM accounts;'
+            sql = '''
+            SELECT * 
+            FROM accounts
+            WHERE is_active = 1;
+            '''
             cursor.execute(sql)
             for row in cursor.fetchall():
                 accounts.append(
-                    Account(account_id=row[0], number=row[1], name=row[2], type_=row[3])
+                    Account(
+                        account_id=row[0],
+                        number=row[1],
+                        name=row[2],
+                        type_=row[3],
+                        is_active=row[4],
+                    )
                 )
         return accounts
 

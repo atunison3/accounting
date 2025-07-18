@@ -16,7 +16,7 @@ class AccountRepository(ABC):
         pass
 
     @abstractmethod
-    def list_all(self) -> list[Account]:
+    def list_all_active(self) -> list[Account]:
         '''Return all accounts.'''
         pass
 

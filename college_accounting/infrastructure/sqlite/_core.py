@@ -17,7 +17,8 @@ CREATE TABLE IF NOT EXISTS accounts (
     account_id INTEGER PRIMARY KEY AUTOINCREMENT,
     number INTEGER NOT NULL UNIQUE,
     name TEXT NOT NULL,
-    type_ INT NOT NULL
+    type_ INT NOT NULL, 
+    is_active BOOL NOT NULL DEFAULT 1
 );
 
 CREATE TABLE IF NOT EXISTS entries (

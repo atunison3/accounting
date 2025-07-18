@@ -47,3 +47,10 @@ class JournalEntry(BaseModel):
         dr = format_amount(0)
         cr = format_amount(0)
         print(f'    |    |    {self.description[:73]:<76.76} |     | {dr} | {cr}')
+        print(f'''    |    |{' ' * 81}|     |           |          ''')
+
+    def print_trial_balances(self, from_: datetime, to_: datetime, accounts: list = None):
+        '''Prints the trial balance of selected accounts'''
+
+        if not accounts:
+            accounts = None

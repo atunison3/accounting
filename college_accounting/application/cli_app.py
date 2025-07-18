@@ -42,7 +42,7 @@ class CLIApp:
         type_ = int(str(number)[0])
 
         # Initialize the account
-        account = Account(account_id=0, number=number, name=name, type_=type_)
+        account = Account(account_id=0, number=number, name=name, type_=type_, is_active=1)
 
         account = self.repo.accounts.add(account)
 
@@ -110,6 +110,15 @@ class CLIApp:
             entry = self.add_entry(date, description)
         except Exception as e:
             print(f'Error: {e}')
+
+        # Verify balanced debits and credits
+        dr_total = 0
+        cr_total = 0
+        for transaction in transactions_list:
+            dr_total += transaction[1]
+            cr_total += transaction[2]
+        if dr_total != cr_total:
+            raise ValueError("Unbalanced transaction!")
 
         # Iterate through transactions and add them
         for transaction_row in transactions_list:
