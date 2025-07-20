@@ -4,8 +4,12 @@ from application.cli_app import CLIApp
 from utility_functions import delete_database
 
 if __name__ == '__main__':
+    
     db_path = '/Users/andrewtunison/accounting.db'
+    delete_database(db_path)
     app = CLIApp(db_path)
+
+    
 
     # Configure accounts to make
     # Example from pg 98 of College Accounting
@@ -33,47 +37,57 @@ if __name__ == '__main__':
 
     # Add journal entry (pg 114)
     date, description = '2010-11-01', 'A. Glover invested $5,000 cash in the placement agency'
-    transactions = [(111, 8000, 0), (311, 0, 8000)]
-    app.add_journal(date, description, transactions)
+    journal_entry = app.add_journal_entry(date, description)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 111, 8000)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 311, -8000)
 
     date, description = '2010-11-01', 'Paid ten months\' rent in advance, $2,800'
-    transactions = [(114, 2800, 0), (111, 0, 2800)]
-    app.add_journal(date, description, transactions)
+    journal_entry = app.add_journal_entry(date, description)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 114, 2800)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 111, -2800)
 
     date, description = '2010-11-03', 'Purchased $1,200 of equipment from Omni Co. on account.'
-    transactions = [(131, 1200, 0), (211, 0, 1200)]
-    app.add_journal(date, description, transactions)
+    journal_entry = app.add_journal_entry(date, description)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 131, 1200)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 211, -1200)
 
     date, description = '2010-11-05', 'Purchased $900 cash for art-training workshop for teachers.'
-    transactions = [(521, 900, 0), (111, 0, 900)]
-    app.add_journal(date, description, transactions)
+    journal_entry = app.add_journal_entry(date, description)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 521, 900)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 111, -900)
 
     date, description = '2010-11-08', 'Purchased $450 of art supplies for cash.'
-    transactions = [(121, 450, 0), (111, 0, 450)]
-    app.add_journal(date, description, transactions)
+    journal_entry = app.add_journal_entry(date, description)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 121, 450)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 111, -450)
 
     date, description = (
         '2010-11-09',
         'Billed Howie Co. $2,500 for group art lessons for its employees.',
     )
-    transactions = [(112, 2500, 0), (411, 0, 2500)]
-    app.add_journal(date, description, transactions)
+    journal_entry = app.add_journal_entry(date, description)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 112, 2500)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 411, -2500)
 
     date, description = '2010-11-10', 'Paid salaries of assistants, $1,300'
-    transactions = [(521, 1300, 0), (111, 0, 1300)]
-    app.add_journal(date, description, transactions)
+    journal_entry = app.add_journal_entry(date, description)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 521, 1300)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 111, -1300)
 
     date, description = '2010-11-15', 'Barbie withdrew $100 from the business for personal use'
-    transactions = [(312, 100, 0), (111, 0, 100)]
-    app.add_journal(date, description, transactions)
+    journal_entry = app.add_journal_entry(date, description)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 312, 100)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 111, -100)
 
     date, description = '2010-11-28', 'Paid electrical bill, $110'
-    transactions = [(511, 110, 0), (111, 0, 110)]
-    app.add_journal(date, description, transactions)
+    journal_entry = app.add_journal_entry(date, description)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 511, 110)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 111, -110)
 
     date, description = '2010-11-29', 'Paid telephone bill for November, $140'
-    transactions = [(531, 140, 0), (111, 0, 140)]
-    app.add_journal(date, description, transactions)
+    journal_entry = app.add_journal_entry(date, description)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 531, 140)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 111, -140)
 
     app.print_journal('2010-11-01', '2010-11-30')
 

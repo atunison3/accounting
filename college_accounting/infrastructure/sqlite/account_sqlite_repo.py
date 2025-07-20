@@ -11,28 +11,28 @@ class SQLiteAccountRepository(AccountRepository, BaseSQLiteRepository):
     def add(self, account: Account) -> Account:
         with self._connect() as conn:
             cursor = conn.cursor()
-            sql = 'INSERT INTO accounts (number, name, type_) VALUES (?, ?, ?);'
-            cursor.execute(sql, (account.number, account.name, account.type_))
-            account.account_id = cursor.lastrowid
+            sql = 'INSERT INTO Account (Number, Title, Type_) VALUES (?, ?, ?);'
+            cursor.execute(sql, (account.number, account.title, account.type_))
+            account.id_ = cursor.lastrowid
             conn.commit()
         return account
 
-    def get_by_id(self, account_id: int) -> Account:
+    def get_by_id(self, id_: int) -> Account:
         '''Gets an account by id'''
 
         with self._connect() as conn:
             cursor = conn.cursor()
             sql = '''
             SELECT * 
-            FROM accounts 
+            FROM Account
             WHERE 
-                account_id = ?;
+                ID = ?;
             '''
-            cursor.execute(sql, (account_id,))
+            cursor.execute(sql, (id_,))
             row = cursor.fetchone()
             if row:
                 return Account(
-                    account_id=row[0], number=row[1], name=row[2], type_=row[3], is_active=row[4]
+                    id_=row[0], number=row[1], title=row[2], type_=row[3], is_active=row[4]
                 )
             return None
 
@@ -43,26 +43,26 @@ class SQLiteAccountRepository(AccountRepository, BaseSQLiteRepository):
             cursor = conn.cursor()
             sql = '''
             SELECT * 
-            FROM accounts
-            WHERE is_active = 1;
+            FROM Account
+            WHERE IsActive = 1;
             '''
             cursor.execute(sql)
             for row in cursor.fetchall():
                 accounts.append(
                     Account(
-                        account_id=row[0],
+                        id_=row[0],
                         number=row[1],
-                        name=row[2],
+                        title=row[2],
                         type_=row[3],
                         is_active=row[4],
                     )
                 )
         return accounts
 
-    def delete(self, account_id: int):
+    def delete(self, id_: int):
 
         with self._connect() as conn:
             cursor = conn.cursor()
-            sql = 'DELETE FROM accounts WHERE account_id = ?;'
-            cursor.execute(sql, (account_id,))
+            sql = 'DELETE FROM Account WHERE ID = ?;'
+            cursor.execute(sql, (id_,))
             conn.commit()

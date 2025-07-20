@@ -13,27 +13,24 @@ class BaseSQLiteRepository:
 
 
 schema_sql = '''
-CREATE TABLE IF NOT EXISTS accounts (
-    account_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    number INTEGER NOT NULL UNIQUE,
-    name TEXT NOT NULL,
-    type_ INT NOT NULL, 
-    is_active BOOL NOT NULL DEFAULT 1
+CREATE TABLE IF NOT EXISTS Account (
+    ID INTEGER PRIMARY KEY AUTOINCREMENT,
+    Number INTEGER NOT NULL UNIQUE,
+    Title TEXT NOT NULL,
+    Type_ INT NOT NULL, 
+    IsActive BOOL NOT NULL DEFAULT 1
 );
 
-CREATE TABLE IF NOT EXISTS entries (
-    entry_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    date DATE NOT NULL,
-    description TEXT
+CREATE TABLE IF NOT EXISTS Journal (
+    ID INTEGER PRIMARY KEY AUTOINCREMENT,
+    Date TEXT NOT NULL,
+    Description TEXT
 );
 
-CREATE TABLE IF NOT EXISTS transactions (
-    transaction_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    entry_id INTEGER NOT NULL,
-    account_number INTEGER NOT NULL,
-    debit REAL,
-    credit REAL,
-    FOREIGN KEY (account_number) REFERENCES accounts (number),
-    FOREIGN KEY (entry_id) REFERENCES entries (entry_id)
-);
+CREATE TABLE IF NOT EXISTS Ledger (
+    ID INTEGER PRIMARY KEY AUTOINCREMENT,
+    EntryID INTEGER NOT NULL REFERENCES Journal(ID),
+    AccountNumber INTEGER NOT NULL REFERENCES Account(Number), -- FK to Accounts table
+    TransactionAmount REAL NOT NULL
+) STRICT;
 '''

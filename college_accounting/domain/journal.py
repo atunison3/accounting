@@ -7,8 +7,8 @@ def format_amount(value: float, print_day: bool = False) -> str:
     return f"{value:9.2f}" if value else " " * 9
 
 
-class JournalEntry(BaseModel):
-    entry_id: int
+class Journal(BaseModel):
+    id_: int
     date: datetime
     description: str
     debits: list[tuple[str, int, float]]

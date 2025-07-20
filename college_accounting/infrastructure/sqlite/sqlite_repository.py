@@ -4,8 +4,8 @@ import sqlite3
 from datetime import datetime
 from infrastructure.sqlite._core import BaseSQLiteRepository
 from infrastructure.sqlite.account_sqlite_repo import SQLiteAccountRepository
-from infrastructure.sqlite.entry_sqlite_repo import SQLiteEntryRepository
-from infrastructure.sqlite.transaction_sqlite_repo import SQLiteTransactionRepository
+from infrastructure.sqlite.journal_entry_sqlite_repo import SQLiteJournalEntryRepository
+from infrastructure.sqlite.ledger_transaction_sqlite_repo import SQLiteLedgerTransactionRepository
 from infrastructure.sqlite._core import schema_sql
 
 
@@ -16,8 +16,8 @@ class SQLiteRepository(BaseSQLiteRepository):
 
         self._schema_sql = schema_sql
         self.accounts = SQLiteAccountRepository(db_path)
-        self.entries = SQLiteEntryRepository(db_path)
-        self.transactions = SQLiteTransactionRepository(db_path)
+        self.journal_entries = SQLiteJournalEntryRepository(db_path)
+        self.ledger_transactions = SQLiteLedgerTransactionRepository(db_path)
 
         self.ensure_db_exists()
 
@@ -37,7 +37,7 @@ class SQLiteRepository(BaseSQLiteRepository):
                 else:
                     print('📦 Empty database created (no schema).')
 
-    def get_journal(self, from_: datetime, to_: datetime = None) -> list:
+    def get_journal_entries(self, from_: datetime, to_: datetime = None) -> list:
         '''Gets information for a journal'''
 
         if not to_:
@@ -47,20 +47,19 @@ class SQLiteRepository(BaseSQLiteRepository):
             cursor = conn.cursor()
             sql = '''
                 SELECT
-                    e.entry_id,
-                    t.transaction_id,
-                    e.date,
-                    e.description,
-                    a.name,
-                    a.number,
-                    t.debit,
-                    t.credit
-                FROM transactions t
-                JOIN entries e ON t.entry_id = e.entry_id
-                JOIN accounts a ON t.account_number = a.number
+                    j.ID,
+                    l.ID,
+                    j.Date,
+                    j.Description,
+                    a.Title,
+                    a.Number,
+                    l.TransactionAmount
+                FROM Ledger l
+                JOIN Journal j ON l.EntryID = j.ID
+                JOIN Account a ON l.AccountNumber = a.Number
                 WHERE
-                    e.date >= ? AND
-                    e.date <= ?
+                    j.date >= ? AND
+                    j.date <= ?
                 '''
             cursor.execute(sql, (from_, to_))
             results = cursor.fetchall()
