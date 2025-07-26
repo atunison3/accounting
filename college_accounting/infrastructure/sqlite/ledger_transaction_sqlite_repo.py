@@ -28,7 +28,7 @@ class SQLiteLedgerTransactionRepository(LedgerTransactionRepository, BaseSQLiteR
                 (
                     ledger_transaction.account_number,
                     ledger_transaction.entry_id,
-                    ledger_transaction.transaction_amount
+                    ledger_transaction.transaction_amount,
                 ),
             )
             ledger_transaction.id_ = cursor.lastrowid
@@ -48,7 +48,7 @@ class SQLiteLedgerTransactionRepository(LedgerTransactionRepository, BaseSQLiteR
                 AccountNumber,
                 TransactionAmount,
                 SUM(TransactionAmount) OVER (
-                    PARTITION BY Account
+                    PARTITION BY AccountNumber
                     ORDER BY Date, ID
                     ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
                 ) AS RunningBalance
@@ -63,7 +63,7 @@ class SQLiteLedgerTransactionRepository(LedgerTransactionRepository, BaseSQLiteR
                     entry_id=row[1],
                     account_number=row[2],
                     transaction_amount=row[3],
-                    account_balance=row[4],
+                    running_balance=row[4],
                 )
             return None
 
@@ -80,7 +80,7 @@ class SQLiteLedgerTransactionRepository(LedgerTransactionRepository, BaseSQLiteR
                 AccountNumber,
                 TransactionAmount,
                 SUM(TransactionAmount) OVER (
-                    PARTITION BY Account
+                    PARTITION BY AccountNumber
                     ORDER BY Date, ID
                     ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
                 ) AS RunningBalance
@@ -94,7 +94,7 @@ class SQLiteLedgerTransactionRepository(LedgerTransactionRepository, BaseSQLiteR
                         entry_id=row[1],
                         account_number=row[2],
                         transaction_amount=row[3],
-                        account_balance=row[4],
+                        running_balance=row[4],
                     )
                 )
         return transactions

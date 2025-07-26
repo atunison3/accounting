@@ -11,8 +11,10 @@ class SQLiteAccountRepository(AccountRepository, BaseSQLiteRepository):
     def add(self, account: Account) -> Account:
         with self._connect() as conn:
             cursor = conn.cursor()
-            sql = 'INSERT INTO Account (Number, Title, Type_) VALUES (?, ?, ?);'
-            cursor.execute(sql, (account.number, account.title, account.type_))
+            sql = 'INSERT INTO Account (Number, Title, Type_, IsDebitNorm) VALUES (?, ?, ?, ?);'
+            cursor.execute(
+                sql, (account.number, account.title, account.type_, account.is_debit_norm)
+            )
             account.id_ = cursor.lastrowid
             conn.commit()
         return account
@@ -23,16 +25,30 @@ class SQLiteAccountRepository(AccountRepository, BaseSQLiteRepository):
         with self._connect() as conn:
             cursor = conn.cursor()
             sql = '''
-            SELECT * 
-            FROM Account
-            WHERE 
-                ID = ?;
+            SELECT 
+                a.ID,
+                a.Number, 
+                a.Title,
+                a.Type_,
+                a.IsActive,
+                a.IsDebitNorm,
+                COALESCE(SUM(l.TransactionAmount), 0)
+            FROM Account a
+            LEFT JOIN Ledger l ON l.AccountNumber = a.Number
+            WHERE a.ID = ?
+            GROUP BY a.Number;
             '''
             cursor.execute(sql, (id_,))
             row = cursor.fetchone()
             if row:
                 return Account(
-                    id_=row[0], number=row[1], title=row[2], type_=row[3], is_active=row[4]
+                    id_=row[0],
+                    number=row[1],
+                    title=row[2],
+                    type_=row[3],
+                    is_active=row[4],
+                    is_debit_norm=row[5],
+                    balance=row[6],
                 )
             return None
 
@@ -42,12 +58,22 @@ class SQLiteAccountRepository(AccountRepository, BaseSQLiteRepository):
         with self._connect() as conn:
             cursor = conn.cursor()
             sql = '''
-            SELECT * 
-            FROM Account
-            WHERE IsActive = 1;
+            SELECT 
+                a.ID,
+                a.Number, 
+                a.Title,
+                a.Type_,
+                a.IsActive,
+                a.IsDebitNorm,
+                COALESCE(SUM(l.TransactionAmount), 0)
+            FROM Account a
+            LEFT JOIN Ledger l ON l.AccountNumber = a.Number
+            WHERE a.IsActive=1
+            GROUP BY a.Number;
             '''
             cursor.execute(sql)
-            for row in cursor.fetchall():
+            rows = cursor.fetchall()
+            for row in rows:
                 accounts.append(
                     Account(
                         id_=row[0],
@@ -55,6 +81,8 @@ class SQLiteAccountRepository(AccountRepository, BaseSQLiteRepository):
                         title=row[2],
                         type_=row[3],
                         is_active=row[4],
+                        is_debit_norm=row[5],
+                        balance=row[6],
                     )
                 )
         return accounts

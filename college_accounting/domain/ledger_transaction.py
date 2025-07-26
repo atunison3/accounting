@@ -6,4 +6,4 @@ class LedgerTransaction(BaseModel):
     entry_id: int
     account_number: int
     transaction_amount: float
-    account_balance: float | None
+    running_balance: float | None

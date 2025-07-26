@@ -53,13 +53,14 @@ class SQLiteRepository(BaseSQLiteRepository):
                     j.Description,
                     a.Title,
                     a.Number,
-                    l.TransactionAmount
+                    l.TransactionAmount, 
+                    a.IsDebitNorm
                 FROM Ledger l
                 JOIN Journal j ON l.EntryID = j.ID
                 JOIN Account a ON l.AccountNumber = a.Number
                 WHERE
-                    j.date >= ? AND
-                    j.date <= ?
+                    DATE(j.Date) >= DATE(?) AND
+                    DATE(j.Date) <= DATE(?)
                 '''
             cursor.execute(sql, (from_, to_))
             results = cursor.fetchall()

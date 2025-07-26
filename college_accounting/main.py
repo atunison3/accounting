@@ -1,94 +1,102 @@
+import logging
+
 from sqlite3 import IntegrityError
 
 from application.cli_app import CLIApp
 from utility_functions import delete_database
 
 if __name__ == '__main__':
-    
+
+    # Set up the logger
+    logger = logging.getLogger('general')
+    logger.setLevel(logging.DEBUG)
+
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+
     db_path = '/Users/andrewtunison/accounting.db'
     delete_database(db_path)
     app = CLIApp(db_path)
 
-    
-
     # Configure accounts to make
-    # Example from pg 98 of College Accounting
+    # Example from pg 109 of College Accounting
     accounts_to_make = [
-        ('Cash', 111),
-        ('Accounts Receiveable', 112),
-        ('Prepaid Rent', 114),
-        ('Art Supplies', 121),
-        ('Equipment', 131),
-        ('Accounts Payable', 211),
-        ('Barbie Riley, Capital', 311),
-        ('Barbie Riley, Withdrawals', 312),
-        ('Arts Fees Earned', 411),
-        ('Electrical Expense', 511),
-        ('Salaries Expense', 521),
-        ('Telephone Expense', 531),
+        ('Cash', 111, True),
+        ('Accounts Receiveable', 112, True),
+        ('Supplies', 131, True),
+        ('Equipment', 141, True),
+        ('Accounts Payable', 211, False),
+        ('A. Todd, Capital', 311, False),
+        ('A. Todd, Withdrawals', 321, True),
+        ('Employment Fees Earned', 411, False),
+        ('Wage Expense', 511, True),
+        ('Telephone Expense', 521, True),
+        ('Advertising Expense', 531, True),
     ]
-    for name, number in accounts_to_make:
+    for name, number, is_debit in accounts_to_make:
         try:
-            app.add_account(number, name)
+            app.add_account(number, name, is_debit)
         except IntegrityError:
             print(f'{number} {name} already in database')
 
     app.chart_of_accounts()
 
-    # Add journal entry (pg 114)
-    date, description = '2010-11-01', 'A. Glover invested $5,000 cash in the placement agency'
+    # Add journal entry (pg 109)
+    date, description = '2010-03-01', 'Abby Todd invested $5,000 cash in the new employment agency.'
     journal_entry = app.add_journal_entry(date, description)
-    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 111, 8000)
-    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 311, -8000)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 111, 5000)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 311, -5000)
 
-    date, description = '2010-11-01', 'Paid ten months\' rent in advance, $2,800'
+    date, description = '2010-03-04', 'Bought equipment for cash, $200.'
     journal_entry = app.add_journal_entry(date, description)
-    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 114, 2800)
-    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 111, -2800)
-
-    date, description = '2010-11-03', 'Purchased $1,200 of equipment from Omni Co. on account.'
-    journal_entry = app.add_journal_entry(date, description)
-    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 131, 1200)
-    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 211, -1200)
-
-    date, description = '2010-11-05', 'Purchased $900 cash for art-training workshop for teachers.'
-    journal_entry = app.add_journal_entry(date, description)
-    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 521, 900)
-    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 111, -900)
-
-    date, description = '2010-11-08', 'Purchased $450 of art supplies for cash.'
-    journal_entry = app.add_journal_entry(date, description)
-    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 121, 450)
-    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 111, -450)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 141, 200)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 111, -200)
 
     date, description = (
-        '2010-11-09',
-        'Billed Howie Co. $2,500 for group art lessons for its employees.',
+        '2010-03-05',
+        'Earned employment fee commision, $200, but payment from Blue Co. will not be received until June.',
     )
     journal_entry = app.add_journal_entry(date, description)
-    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 112, 2500)
-    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 411, -2500)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 112, 200)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 411, -200)
 
-    date, description = '2010-11-10', 'Paid salaries of assistants, $1,300'
+    date, description = '2010-03-06', 'Paid wages expense, $300.'
     journal_entry = app.add_journal_entry(date, description)
-    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 521, 1300)
-    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 111, -1300)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 511, 300)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 111, -300)
 
-    date, description = '2010-11-15', 'Barbie withdrew $100 from the business for personal use'
+    date, description = (
+        '2010-03-07',
+        'Abby paid her home utility bill from the company checkbook, $75.',
+    )
     journal_entry = app.add_journal_entry(date, description)
-    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 312, 100)
-    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 111, -100)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 321, 75)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 111, -75)
 
-    date, description = '2010-11-28', 'Paid electrical bill, $110'
+    date, description = (
+        '2010-03-09',
+        'Placed Rick Wool at VCR Corporation, receiving $1,200 cash.',
+    )
     journal_entry = app.add_journal_entry(date, description)
-    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 511, 110)
-    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 111, -110)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 111, 1200)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 411, -1200)
 
-    date, description = '2010-11-29', 'Paid telephone bill for November, $140'
+    date, description = '2010-03-15', 'Paid cash for supplies, $200'
     journal_entry = app.add_journal_entry(date, description)
-    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 531, 140)
-    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 111, -140)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 131, 200)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 111, -200)
 
-    app.print_journal('2010-11-01', '2010-11-30')
+    date, description = '2010-03-28', 'Telephone bill received but not paid, $180.'
+    journal_entry = app.add_journal_entry(date, description)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 521, 180)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 211, -180)
+
+    date, description = '2010-03-29', 'Advertising bill received but not paid, $400'
+    journal_entry = app.add_journal_entry(date, description)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 531, 400)
+    ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 211, -400)
+
+    app.print_general_journal('2010-03-01', '2010-03-31')
+
+    app.print_trial_balance()
 
     delete_database(db_path)

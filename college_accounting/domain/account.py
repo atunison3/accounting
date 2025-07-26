@@ -7,3 +7,5 @@ class Account(BaseModel):
     title: str
     type_: int
     is_active: bool
+    is_debit_norm: bool
+    balance: float | None
