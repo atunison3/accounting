@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <body>
+    <pre class="mermaid">
+erDiagram
+    TRANSACTION }|--|| ENTRY : has
+    TRANSACTION }|--|| ACCOUNT : has
+    TRANSACTION {
+        int transaction_id PK
+        int entry_id FK
+        int account_number FK
+        float debit
+        float credit
+        float trial_balance
+    }
+    ACCOUNT {
+        int account_number PK
+        string account_title
+        bool is_active
+    }
+    ENTRY {
+        int entry_id PK
+        date entry_date
+        string entry_description
+    }
+
+    </pre>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    </script>
+  </body>
+</html>

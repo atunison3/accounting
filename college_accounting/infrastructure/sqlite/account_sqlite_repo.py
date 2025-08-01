@@ -9,60 +9,88 @@ class SQLiteAccountRepository(AccountRepository, BaseSQLiteRepository):
         self.db_path = db_path
 
     def add(self, account: Account) -> Account:
-
-        cursor = self._connect()
-
-        sql = 'INSERT INTO accounts (number, name, type_) VALUES (?, ?, ?);'
-        cursor.execute(sql, (account.number, account.name, account.type_))
-
-        # Update the account_id
-        account.account_id = cursor.lastrowid
-
-        self._disconnect()
-
+        with self._connect() as conn:
+            cursor = conn.cursor()
+            sql = 'INSERT INTO Account (Number, Title, Type_, IsDebitNorm) VALUES (?, ?, ?, ?);'
+            cursor.execute(
+                sql, (account.number, account.title, account.type_, account.is_debit_norm)
+            )
+            account.id_ = cursor.lastrowid
+            conn.commit()
         return account
 
-    def get_by_id(self, account_id: int) -> Account:
+    def get_by_id(self, id_: int) -> Account:
         '''Gets an account by id'''
 
-        cursor = self._connect()
+        with self._connect() as conn:
+            cursor = conn.cursor()
+            sql = '''
+            SELECT 
+                a.ID,
+                a.Number, 
+                a.Title,
+                a.Type_,
+                a.IsActive,
+                a.IsDebitNorm,
+                COALESCE(SUM(l.TransactionAmount), 0)
+            FROM Account a
+            LEFT JOIN Ledger l ON l.AccountNumber = a.Number
+            WHERE a.ID = ?
+            GROUP BY a.Number;
+            '''
+            cursor.execute(sql, (id_,))
+            row = cursor.fetchone()
+            if row:
+                return Account(
+                    id_=row[0],
+                    number=row[1],
+                    title=row[2],
+                    type_=row[3],
+                    is_active=row[4],
+                    is_debit_norm=row[5],
+                    balance=row[6],
+                )
+            return None
 
-        sql = 'SELECT * FROM accounts WHERE account_id = ?;'
-        cursor.execute(sql, (account_id,))
-
-        account = None
-
-        if result := cursor.fetchone():
-            account = Account(
-                account_id=result[0], number=result[1], name=result[2], type_=result[3]
-            )
-
-        self._disconnect()
-
-        return account
-
-    def list_all(self) -> list[Account]:
-
-        cursor = self._connect()
-
-        sql = 'SELECT * FROM accounts;'
-        cursor.execute(sql)
+    def list_all_active(self) -> list[Account]:
 
         accounts = []
-        if results := cursor.fetchall():
-            for result in results:
-                account = Account(
-                    account_id=result[0], number=result[1], name=result[2], type_=result[3]
+        with self._connect() as conn:
+            cursor = conn.cursor()
+            sql = '''
+            SELECT 
+                a.ID,
+                a.Number, 
+                a.Title,
+                a.Type_,
+                a.IsActive,
+                a.IsDebitNorm,
+                COALESCE(SUM(l.TransactionAmount), 0)
+            FROM Account a
+            LEFT JOIN Ledger l ON l.AccountNumber = a.Number
+            WHERE a.IsActive=1
+            GROUP BY a.Number;
+            '''
+            cursor.execute(sql)
+            rows = cursor.fetchall()
+            for row in rows:
+                accounts.append(
+                    Account(
+                        id_=row[0],
+                        number=row[1],
+                        title=row[2],
+                        type_=row[3],
+                        is_active=row[4],
+                        is_debit_norm=row[5],
+                        balance=row[6],
+                    )
                 )
-                accounts.append(account)
-
-        self._disconnect()
-
         return accounts
 
-    def delete(self, account_id: int):
+    def delete(self, id_: int):
 
-        cursor = self._connect()
-        sql = 'DELETE FROM accounts WHERE account_id = ?;'
-        cursor.execute(sql, (account_id,))
-        self._disconnect()
+        with self._connect() as conn:
+            cursor = conn.cursor()
+            sql = 'DELETE FROM Account WHERE ID = ?;'
+            cursor.execute(sql, (id_,))
+            conn.commit()

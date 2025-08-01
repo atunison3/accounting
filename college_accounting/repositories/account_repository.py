@@ -11,16 +11,16 @@ class AccountRepository(ABC):
         pass
 
     @abstractmethod
-    def get_by_id(self, account_id: int) -> Account:
+    def get_by_id(self, id_: int) -> Account:
         '''Retrieve a account by its ID.'''
         pass
 
     @abstractmethod
-    def list_all(self) -> list[Account]:
+    def list_all_active(self) -> list[Account]:
         '''Return all accounts.'''
         pass
 
     @abstractmethod
-    def delete(self, account_id: int) -> None:
+    def delete(self, id_: int) -> None:
         '''Delete a account by its ID.'''
         pass

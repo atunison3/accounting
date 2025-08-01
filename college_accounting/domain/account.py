@@ -2,7 +2,10 @@ from pydantic import BaseModel
 
 
 class Account(BaseModel):
-    account_id: int
+    id_: int
     number: int
-    name: str
+    title: str
     type_: int
+    is_active: bool
+    is_debit_norm: bool
+    balance: float | None
