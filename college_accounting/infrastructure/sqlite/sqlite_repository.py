@@ -25,17 +25,10 @@ class SQLiteRepository(BaseSQLiteRepository):
         '''Check if a SQLite database exists. If not, create it.'''
         db_exists = os.path.exists(self.db_path)
 
-        if db_exists:
-            print(f'✅ Database already exists at {self.db_path}')
-        else:
-            print(f'⚡ Creating new database at {self.db_path}')
+        if not db_exists:
             # Create the SQLite DB file (connect creates it automatically)
             with sqlite3.connect(self.db_path) as conn:
-                if self._schema_sql:
-                    conn.executescript(self._schema_sql)
-                    print('📦 Database schema initialized.')
-                else:
-                    print('📦 Empty database created (no schema).')
+                conn.executescript(self._schema_sql)
 
     def get_journal_entries(self, from_: datetime, to_: datetime = None) -> list:
         '''Gets information for a journal'''
@@ -66,3 +59,25 @@ class SQLiteRepository(BaseSQLiteRepository):
             results = cursor.fetchall()
 
         return results
+
+    def get_general_ledger(self, account_number: int, from_: datetime, to_: datetime = None) -> list:
+        '''Gets a general ledger'''
+
+        if not to_:
+            to_ = datetime.today()
+        
+        with self._connect() as conn:
+            cursor = conn.cursor()
+            sql = '''
+                SELECT * 
+                FROM GeneralLedger
+                WHERE 
+                    AccountNumber = ? AND 
+                    DATE >= ? AND 
+                    DATE <= ?;
+            '''
+            cursor.execute(sql, (account_number, from_, to_))
+            results = cursor.fetchall()
+
+        return results
+

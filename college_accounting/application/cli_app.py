@@ -7,7 +7,7 @@ from domain.journal_entry import JournalEntry
 from domain.journal import Journal
 from domain.ledger_transaction import LedgerTransaction
 from infrastructure.sqlite.sqlite_repository import SQLiteRepository
-from application.log_emoji import LogEmoji
+from application.emojis import Emojis
 
 
 def is_valid_date(date: str):
@@ -24,6 +24,7 @@ class CLIApp:
     def __init__(self, db_path: str):
         self.repo = SQLiteRepository(db_path)
 
+    # Create
     def add_account(self, number: str | int, title: str, is_debit_norm: bool):
         '''Creates an account'''
 
@@ -107,6 +108,14 @@ class CLIApp:
         journal_entry = self.repo.journal_entries.add(journal_entry)
 
         return journal_entry
+
+    # Read
+    def list_all_active_accounts(self):
+        '''List all active accounts'''
+
+        accounts = self.repo.accounts.list_all_active()
+
+        return accounts
 
     # fmt: off
     def add_journal_entry_and_transaction(
@@ -222,8 +231,8 @@ class CLIApp:
         print('=' * 120)
 
         # Print rows
-        print(' ' * 96 + '|           |          ')
-        print(' ' * 96 + '|    Dr.    |   Cr.    ')
+        print(' ' * 96 + '            |          ')
+        print(' ' * 96 + '     Dr.    |   Cr.    ')
         print('-' * 120)
 
         dr = 0
@@ -232,15 +241,17 @@ class CLIApp:
             if account.is_debit_norm:
                 dr += account.balance
                 n_title = 93 - len(account.title)
-                print(f'  {account.title + ' ' * n_title} | {account.balance:>9.2f} |           ')
+                print(f'''  {account.title + ' ' * n_title} | {account.balance:>9.2f} |           ''')
             else:
                 cr += account.balance
                 n_title = 93 - len(account.title)
                 print(
-                    f'  {account.title + ' ' * n_title} |           | {abs(account.balance):>9.2f} '
+                    f'''  {account.title + ' ' * n_title} |           | {abs(account.balance):>9.2f} '''
                 )
-        print()
-        print(' ' * 96 + f'| {dr:>9.2f} | {abs(cr):>9.2f} ')
+        print('-' * 96 + '|-----------|-----------')
+        print('    ' + 'Totals' + ' '* 86 + f'| {dr:>9.2f} | {abs(cr):>9.2f} ')
+        print('-' * 96 + '|===========|===========')
+        print(' ' * 96 + '|           |')
         print()
 
     def print_accounting_rules(self) -> None:
@@ -248,7 +259,6 @@ class CLIApp:
 
         print("📘 Accounting Debit and Credit Rules\n")
 
-        headers = ["Account Type", "Normal Balance", "Increase With", "Decrease With"]
         rows = [
             ["Assets", "Debit", "Debit", "Credit"],
             ["Liabilities", "Credit", "Credit", "Debit"],
@@ -267,6 +277,50 @@ class CLIApp:
         # Print rows
         for row in rows:
             print(f"| {row[0]:<24} | {row[1]:<15} | {row[2]:<15} | {row[3]:<15} |")
+
+    def print_account_ledger(self, account_number: int, from_: str, to_: str) -> None:
+        '''Print an account's general ledger'''
+
+        # Data integrity
+        if not isinstance(from_, str) or not isinstance(to_, str):
+            raise TypeError(f'''{Emojis.ERROR} Invalid date(s) in print_account_ledger''')
+        if not isinstance(account_number, int):
+            raise TypeError(f'''{Emojis.ERROR} Invalid account number in print_account_ledger''')
+        if not is_valid_date(from_) or not is_valid_date(to_):
+            raise ValueError(f'''{Emojis.ERROR} Invalid date format in print_account_ledger''')
+        if account_number < 100:
+            raise ValueError(f'''{Emojis.ERROR} Invalid account number in print_account_ledger''')
+
+        # Get transactions for the account
+        transactions = self.repo.get_general_ledger(account_number, from_, to_)
+
+        # Get details
+        n = 100
+        title = transactions[0][1]
+        n_pad = int((n - len(transactions[0][1])) / 2)
+
+        # Begin printing
+        print()
+        print(' ' * n_pad + title + ' ' * (n_pad - 7) + str(account_number) + '    ')
+        print('=' * n)
+        print('  ||                |        |                |                |              Balance            ||')
+        print('  ||      Date      |   PR   |       Dr.      |       Cr.      |       Dr.      |       Cr.      ||')
+        print('-' * n)
+        def print_line(transaction: list) -> None:
+            '''Prints a line in the ledger'''
+            
+            dr1 = f'{transaction[5]:>14,.2f}' if transaction[5] > 0 else ' ' * 14
+            cr1 = f'{transaction[6]:>14,.2f}' if transaction[6] > 0 else ' ' * 14
+            dr2 = f'{transaction[7]:>14,.2f}' if transaction[7] > 0 else ' ' * 14
+            cr2 = f'{transaction[8]:>14,.2f}' if transaction[8] > 0 else ' ' * 14
+            line = f'''  ||   {transaction[3]}   |        | {dr1} | {cr1} | {dr2} | {cr2} ||'''
+            print(line)
+
+        for transaction in transactions:
+            print_line(transaction)
+        print('  ||                |        |                |                |                                 ||')
+        print()
+
 
     # Other functions
     def check_normal_balance(self, account_number: int, account_title: str, is_debit: bool) -> bool:
@@ -291,3 +345,4 @@ class CLIApp:
             raise ValueError(f"Unknown account number range: {account_number}")
 
         return normal_balance == is_debit
+

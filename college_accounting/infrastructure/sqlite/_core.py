@@ -34,4 +34,68 @@ CREATE TABLE IF NOT EXISTS Ledger (
     AccountNumber INTEGER NOT NULL REFERENCES Account(Number), -- FK to Accounts table
     TransactionAmount REAL NOT NULL
 ) STRICT;
+
+CREATE VIEW IF NOT EXISTS GeneralLedger AS 
+WITH Running AS (
+    SELECT
+        l.ID,
+        a.Title,
+        l.AccountNumber,
+        j.Date,
+        j.Description,
+        l.TransactionAmount,
+        a.IsDebitNorm,
+
+        -- Calculate adjusted running balance (positive means "normal")
+        SUM(
+            CASE 
+                WHEN a.IsDebitNorm = 1 THEN l.TransactionAmount
+                ELSE -1 * l.TransactionAmount
+            END
+        ) OVER (
+            PARTITION BY l.AccountNumber
+            ORDER BY j.Date, l.ID
+            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        ) AS AdjustedRunningBalance
+
+    FROM Ledger l
+    JOIN Journal j ON j.ID = l.EntryID
+    JOIN Account a ON a.Number = l.AccountNumber
+)
+
+SELECT
+    r.ID,
+    r.Title,
+    r.AccountNumber,
+    r.Date,
+    r.Description,
+    
+    -- Debit column for current transaction
+    CASE 
+        WHEN r.IsDebitNorm = 1 AND r.TransactionAmount > 0 THEN r.TransactionAmount
+        WHEN r.IsDebitNorm = 0 AND r.TransactionAmount < 0 THEN ABS(r.TransactionAmount)
+        ELSE 0
+    END AS Debit,
+
+    -- Credit column for current transaction
+    CASE 
+        WHEN r.IsDebitNorm = 0 AND r.TransactionAmount > 0 THEN r.TransactionAmount
+        WHEN r.IsDebitNorm = 1 AND r.TransactionAmount < 0 THEN ABS(r.TransactionAmount)
+        ELSE 0
+    END AS Credit,
+
+    -- Running balance split into debit/credit columns
+    CASE 
+        WHEN r.IsDebitNorm = 1 AND r.AdjustedRunningBalance >= 0 THEN r.AdjustedRunningBalance
+        WHEN r.IsDebitNorm = 0 AND r.AdjustedRunningBalance < 0 THEN ABS(r.AdjustedRunningBalance)
+        ELSE 0
+    END AS BalanceDebit,
+
+    CASE 
+        WHEN r.IsDebitNorm = 0 AND r.AdjustedRunningBalance >= 0 THEN r.AdjustedRunningBalance
+        WHEN r.IsDebitNorm = 1 AND r.AdjustedRunningBalance < 0 THEN ABS(r.AdjustedRunningBalance)
+        ELSE 0
+    END AS BalanceCredit
+
+FROM Running r;
 '''

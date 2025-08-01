@@ -11,6 +11,6 @@ def delete_database(db_path: str) -> None:
         except PermissionError:
             logging.error(f'❌ Permission denied. Could not delete {db_path}')
         except Exception as e:
-            logging.print(f'❌ Failed to delete {db_path}: {e}')
+            logging.error(f'❌ Failed to delete {db_path}: {e}')
     else:
         print(f'ℹ️ Database does not exist: {db_path}')

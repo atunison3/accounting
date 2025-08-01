@@ -3,14 +3,6 @@ from repositories.ledger_transaction_repository import LedgerTransactionReposito
 from infrastructure.sqlite._core import BaseSQLiteRepository
 
 
-# class Transaction(BaseModel):
-#     id_: int
-#     entry: int
-#     account_number: int
-#     amount: float
-#     account_balance: float
-
-
 class SQLiteLedgerTransactionRepository(LedgerTransactionRepository, BaseSQLiteRepository):
 
     def __init__(self, db_path: str):
@@ -73,18 +65,26 @@ class SQLiteLedgerTransactionRepository(LedgerTransactionRepository, BaseSQLiteR
         with self._connect() as conn:
             cursor = conn.cursor()
             sql = '''
-            CREATE VIEW LedgerWithBalance AS
-            SELECT
-                ID,
-                EntryID,
-                AccountNumber,
-                TransactionAmount,
-                SUM(TransactionAmount) OVER (
-                    PARTITION BY AccountNumber
-                    ORDER BY Date, ID
-                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-                ) AS RunningBalance
-            FROM Ledger;
+                CREATE VIEW LedgerWithBalance AS 
+                SELECT
+                    l.ID,
+                    l.EntryID,
+                    j.Date,
+                    j.Description,
+                    l.AccountNumber,
+                    l.TransactionAmount,
+                    SUM(l.TransactionAmount) OVER (
+                        PARTITION BY l.AccountNumber
+                        ORDER BY j.Date, l.ID
+                        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+                    ) AS RunningBalance
+                FROM Ledger l
+                JOIN Journal j ON j.ID = l.EntryID;
+            '''
+            sql = '''
+                SELECT l.EntryID FROM Ledger l
+                LEFT JOIN Journal j ON j.ID = l.EntryID
+                WHERE j.ID IS NULL;
             '''
             cursor.execute(sql)
             for row in cursor.fetchall():
@@ -94,6 +94,7 @@ class SQLiteLedgerTransactionRepository(LedgerTransactionRepository, BaseSQLiteR
                         entry_id=row[1],
                         account_number=row[2],
                         transaction_amount=row[3],
+                        # running_balance=0
                         running_balance=row[4],
                     )
                 )

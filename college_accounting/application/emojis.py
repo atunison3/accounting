@@ -1,4 +1,5 @@
-class LogEmoji(Enum):
+class Emojis:
+
     # Success / OK
     SUCCESS = '✅'
     COMPLETE = '✔️'
@@ -29,3 +30,8 @@ class LogEmoji(Enum):
     PROCESSING = '🗂️'
     METRICS = '📈'
     LOG = '📝'
+    CHART = '📊'
+    INDEX = '🗂️'
+    INFO = 'ℹ️'
+    INFO2 = 'U+2139'
+    BOOKS = '📚'  # — Books (reference material, research)

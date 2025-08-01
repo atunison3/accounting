@@ -18,7 +18,7 @@ if __name__ == '__main__':
     app = CLIApp(db_path)
 
     # Configure accounts to make
-    # Example from pg 109 of College Accounting
+    # Example from pg 98 of College Accounting
     accounts_to_make = [
         ('Cash', 111, True),
         ('Accounts Receiveable', 112, True),
@@ -36,11 +36,11 @@ if __name__ == '__main__':
         try:
             app.add_account(number, name, is_debit)
         except IntegrityError:
-            print(f'{number} {name} already in database')
+            logging.info(f'{log_emoji.info} {number} {name} already in database')
 
     app.chart_of_accounts()
 
-    # Add journal entry (pg 109)
+    # Add journal entry (pg 98)
     date, description = '2010-03-01', 'Abby Todd invested $5,000 cash in the new employment agency.'
     journal_entry = app.add_journal_entry(date, description)
     ledger_transaction = app.add_ledger_transaction(journal_entry.id_, 111, 5000)
@@ -99,4 +99,8 @@ if __name__ == '__main__':
 
     app.print_trial_balance()
 
-    delete_database(db_path)
+    accounts = app.list_all_active_accounts()
+    for account in accounts:
+        app.print_account_ledger(account.number, '2010-03-01', '2010-03-31')
+
+    # delete_database(db_path)
