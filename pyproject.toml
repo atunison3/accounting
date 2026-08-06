@@ -51,3 +51,13 @@ build-backend = "setuptools.build_meta"
 [tool.coverage.run]
 branch = true
 source = ["."]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = [
+    "college_accounting",
+    "college_accounting.*",
+    "accounting",
+    "accounting.*",
+]
+exclude = ["tests", "tests.*", "examples", "examples.*"]

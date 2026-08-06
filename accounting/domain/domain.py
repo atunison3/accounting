@@ -35,3 +35,14 @@ class Mileage(DatabaseModel):
     start_tength_miles: int | None = None
     end_tength_miles: int | None = None
     explanation: str
+
+
+####################
+# Display Items
+####################
+
+
+class TAccountDisplay(BaseModel):
+    account_title: str
+    debits: list[int]
+    credits: list[int]
