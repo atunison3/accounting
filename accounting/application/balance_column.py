@@ -58,8 +58,8 @@ def print_balance_rows(
             + month.ljust(5)
             + "│"
             + day.rjust(3)
-            + " │"
-            + item.explanation[:50].ljust(50)
+            + " │  "
+            + item.explanation[:48].ljust(48)
             + "│"
             + posting_reference.center(10)
             + "│"
