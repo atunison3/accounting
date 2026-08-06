@@ -17,10 +17,16 @@ class TestSpreadSheet(unittest.TestCase):
                 description='Invested $4,500 of his savings into the business.',
             ),
             Transaction(
-                datetime(2024, 7, 2), cash=-1200, shop_equipment=1200, description='Paid $1,200 for computer equipment.'
+                datetime(2024, 7, 2),
+                cash=-1200,
+                shop_equipment=1200,
+                description='Paid $1,200 for computer equipment.',
             ),
             Transaction(
-                datetime(2024, 7, 3), cash=-600, office_equipment=600, description='Paid $600 for office equipment.'
+                datetime(2024, 7, 3),
+                cash=-600,
+                office_equipment=600,
+                description='Paid $600 for office equipment.',
             ),
             Transaction(
                 datetime(2024, 7, 4),
@@ -28,9 +34,14 @@ class TestSpreadSheet(unittest.TestCase):
                 supplies=250,
                 description='Purchased $250 in office supplies on credit.',
             ),
-            Transaction(datetime(2024, 7, 5), cash=-400, expenses=400, description='Paid July rent, $400.'),
             Transaction(
-                datetime(2024, 7, 6), cash=250, service_revenue=250, description='Collected $250 for repair services.'
+                datetime(2024, 7, 5), cash=-400, expenses=400, description='Paid July rent, $400.'
+            ),
+            Transaction(
+                datetime(2024, 7, 6),
+                cash=250,
+                service_revenue=250,
+                description='Collected $250 for repair services.',
             ),
             Transaction(
                 datetime(2024, 7, 7),
@@ -39,13 +50,22 @@ class TestSpreadSheet(unittest.TestCase):
                 description='Collected $200 for system upgrade labor.',
             ),
             Transaction(
-                datetime(2024, 7, 8), accounts_payable=85, expenses=85, description='Electric bill due but unpaid, $85.'
+                datetime(2024, 7, 8),
+                accounts_payable=85,
+                expenses=85,
+                description='Electric bill due but unpaid, $85.',
             ),
             Transaction(
-                datetime(2024, 7, 9), cash=1200, service_revenue=1200, description='Collected $1,200 for services.'
+                datetime(2024, 7, 9),
+                cash=1200,
+                service_revenue=1200,
+                description='Collected $1,200 for services.',
             ),
             Transaction(
-                datetime(2024, 7, 10), cash=-100, freedman_withdrawal=100, description='Withdrew $100 for personal use.'
+                datetime(2024, 7, 10),
+                cash=-100,
+                freedman_withdrawal=100,
+                description='Withdrew $100 for personal use.',
             ),
         ]
 
