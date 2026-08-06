@@ -4,6 +4,14 @@
 
 ## Requirements
 
+1. App shall display the following forms:
+a. T-Account
+b. Balance Column Account
+c. Trial Balance
+d. General Journal
+e. Chart of Accounts
+f. General Ledger
+
 ### Error Checking
 
 1. When a general ledger is produced, the number of credits and debits shall be checked to ensure they are equal.

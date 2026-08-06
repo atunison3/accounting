@@ -1,45 +1,4 @@
-from itertools import zip_longest
-
-from accounting.domain.domain import TAccountDisplay
 from accounting.domain.domain import BalanceColumnDisplay, BalanceColumnItem
-
-
-def print_t_account(
-    t_account: TAccountDisplay,
-    terminal_length: int = 40,
-) -> None:
-    """Print a formatted T-account.
-
-    Debit and credit values are provided as integer cents.
-    """
-    if terminal_length < 20:
-        raise ValueError("terminal_length must be at least 20")
-
-    left_width = terminal_length // 2
-    right_width = terminal_length - left_width - 1
-    margin = 2
-
-    print()
-    print(t_account.account_title.center(terminal_length))
-    print("─" * left_width + "┬" + "─" * right_width)
-    print("Dr.".center(left_width) + "│" + "Cr.".center(right_width))
-
-    for debit, credit in zip_longest(
-        t_account.debits,
-        t_account.credits,
-        fillvalue=None,
-    ):
-        debit_text = f"{debit / 100:,.2f}" if debit is not None else ""
-        credit_text = f"{credit / 100:,.2f}" if credit is not None else ""
-
-        debit_column = debit_text.rjust(left_width - margin)
-        credit_column = credit_text.rjust(right_width - margin)
-
-        print(debit_column + " " * margin + "│" + credit_column + " " * margin)
-
-    # Print final space
-    print("│".center(terminal_length + 1))
-    print()
 
 
 def format_money(amount_cents: int | None, width: int = 14) -> str:
@@ -63,18 +22,31 @@ def print_balance_rows(
         current_year = item.date.year
         current_month = item.date.month
 
+        # Print a separate year row before the first item of each year.
         if current_year != previous_year:
-            # Example: "26 Aug"
-            year_month = item.date.strftime("%y %b")
-        elif current_month != previous_month:
-            # Same year, new month: "   Sep"
-            year_month = item.date.strftime("   %b")
-        else:
-            year_month = ""
+            print(
+                "│ "
+                + str(current_year).ljust(5)
+                + "│"
+                + " " * 4
+                + "│"
+                + " " * 50
+                + "│"
+                + " " * 10
+                + "│"
+                + " " * 14
+                + "│"
+                + " " * 14
+                + "│"
+                + " " * 14
+                + "│"
+            )
+
+            previous_month = None
+
+        month = item.date.strftime("%b") if current_month != previous_month else ""
 
         day = str(item.date.day)
-
-        explanation = item.explanation[:50]
         posting_reference = item.posting_reference or ""
 
         debit = format_money(item.debit)
@@ -83,11 +55,11 @@ def print_balance_rows(
 
         print(
             "│ "
-            + year_month.ljust(5)
+            + month.ljust(5)
             + "│"
             + day.rjust(3)
             + " │"
-            + explanation.ljust(50)
+            + item.explanation[:50].ljust(50)
             + "│"
             + posting_reference.center(10)
             + "│"
@@ -199,23 +171,52 @@ def print_balance_column(
 
 
 if __name__ == "__main__":
-    from datetime import datetime
 
-    t_account = TAccountDisplay(
-        account_title="Cash", debits=[500000, 100000], credits=[50000, 40000, 30000]
-    )
-    print_t_account(t_account)
+    from datetime import datetime
 
     items = [
         BalanceColumnItem(
-            date=datetime(1978, 10, 31),
-            explanation="Owner's investment",
+            date=datetime(2026, 8, 5),
+            explanation="Owner investment",
             posting_reference=None,
-            debit=500000,
+            debit=5_000_00,
             credit=None,
-            balance=50000,
-        )
+            balance=5_000_00,
+        ),
+        BalanceColumnItem(
+            date=datetime(2026, 8, 10),
+            explanation="Purchased parts",
+            posting_reference=None,
+            debit=None,
+            credit=500_00,
+            balance=4500_00,
+        ),
+        BalanceColumnItem(
+            date=datetime(2026, 9, 2),
+            explanation="Revenue from services",
+            posting_reference=None,
+            debit=1_000_00,
+            credit=None,
+            balance=5_500_00,
+        ),
+        BalanceColumnItem(
+            date=datetime(2027, 1, 3),
+            explanation="Paid rent",
+            posting_reference=None,
+            debit=None,
+            credit=400_00,
+            balance=5_100_00,
+        ),
+        BalanceColumnItem(
+            date=datetime(2027, 1, 4),
+            explanation="Paid for advertising",
+            posting_reference=None,
+            debit=None,
+            credit=300_00,
+            balance=4_800_00,
+        ),
     ]
+
     balance_column = BalanceColumnDisplay(
         account_title="Cash", account_number=100, transactions=items
     )

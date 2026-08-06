@@ -46,3 +46,18 @@ class TAccountDisplay(BaseModel):
     account_title: str
     debits: list[int]
     credits: list[int]
+
+
+class BalanceColumnItem(BaseModel):
+    date: datetime
+    explanation: str
+    posting_reference: str | None = None
+    debit: int | None = None
+    credit: int | None = None
+    balance: int
+
+
+class BalanceColumnDisplay(BaseModel):
+    account_title: str
+    account_number: int
+    transactions: list[BalanceColumnItem]
