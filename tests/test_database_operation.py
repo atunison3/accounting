@@ -48,6 +48,7 @@ TRANSACTION_LINES = [
     (8, 1, 10_000, 0, 1, 1),
 ]
 
+
 class TestCreateDatabase(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_directory = tempfile.TemporaryDirectory()
@@ -387,6 +388,6 @@ class TestCreateDatabase(unittest.TestCase):
             self.assertIsNone(line["DeletedAt"])
             self.assertIsNone(line["DeletedBy"])
 
-            
+
 if __name__ == "__main__":
     unittest.main()

@@ -55,8 +55,6 @@ source = ["."]
 [tool.setuptools.packages.find]
 where = ["."]
 include = [
-    "college_accounting",
-    "college_accounting.*",
     "accounting",
     "accounting.*",
 ]
