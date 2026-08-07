@@ -137,7 +137,6 @@ def create_transaction_command(args) -> None:
 
 The presentation layer should call application services rather than execute SQL directly.
 
-
 ## Onion Architecture Diagram
 
 ```text
