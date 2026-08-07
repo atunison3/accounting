@@ -33,9 +33,7 @@ class SQLiteAccountRepository(AccountRepository, BaseSQLiteRepository):
         account = None
 
         if result := cursor.fetchone():
-            account = Account(
-                account_id=result[0], number=result[1], name=result[2], type_=result[3]
-            )
+            account = Account(account_id=result[0], number=result[1], name=result[2], type_=result[3])
 
         self._disconnect()
 
@@ -51,9 +49,7 @@ class SQLiteAccountRepository(AccountRepository, BaseSQLiteRepository):
         accounts = []
         if results := cursor.fetchall():
             for result in results:
-                account = Account(
-                    account_id=result[0], number=result[1], name=result[2], type_=result[3]
-                )
+                account = Account(account_id=result[0], number=result[1], name=result[2], type_=result[3])
                 accounts.append(account)
 
         self._disconnect()

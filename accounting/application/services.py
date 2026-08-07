@@ -146,21 +146,7 @@ def print_balance_column(
     # Print the header
     print()
     print(spacing_before_title + account_title + spacing_between + label + underlined_number)
-    print(
-        "┌"
-        + "─" * 11
-        + "┬"
-        + "─" * 50
-        + "┬"
-        + "─" * 10
-        + "┬"
-        + "─" * 14
-        + "┬"
-        + "─" * 14
-        + "┬"
-        + "─" * 14
-        + "┐"
-    )
+    print("┌" + "─" * 11 + "┬" + "─" * 50 + "┬" + "─" * 10 + "┬" + "─" * 14 + "┬" + "─" * 14 + "┬" + "─" * 14 + "┐")
 
     # Print the column headers
     print(
@@ -201,9 +187,7 @@ def print_balance_column(
 if __name__ == "__main__":
     from datetime import datetime
 
-    t_account = TAccountDisplay(
-        account_title="Cash", debits=[500000, 100000], credits=[50000, 40000, 30000]
-    )
+    t_account = TAccountDisplay(account_title="Cash", debits=[500000, 100000], credits=[50000, 40000, 30000])
     print_t_account(t_account)
 
     items = [
@@ -216,8 +200,6 @@ if __name__ == "__main__":
             balance=50000,
         )
     ]
-    balance_column = BalanceColumnDisplay(
-        account_title="Cash", account_number=100, transactions=items
-    )
+    balance_column = BalanceColumnDisplay(account_title="Cash", account_number=100, transactions=items)
 
     print_balance_column(balance_column)

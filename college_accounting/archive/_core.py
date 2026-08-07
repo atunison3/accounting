@@ -99,10 +99,7 @@ class SpreadSheet(pd.DataFrame):
         if len(self) == 0:
             return 0
         n = len(self) - 1  # get the last row (Balance)
-        return sum(
-            self.loc[n, col]
-            for col in ["Cash", "Supplies", "Computer Shop Equipment", "Office Equipment"]
-        )
+        return sum(self.loc[n, col] for col in ["Cash", "Supplies", "Computer Shop Equipment", "Office Equipment"])
 
     @property
     def total_liabilities(self):

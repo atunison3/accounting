@@ -75,7 +75,7 @@ def print_balance_rows(
         previous_month = current_month
 
     print(
-        "└"
+        "╰"
         + "─" * 6
         + "┴"
         + "─" * 4
@@ -89,7 +89,7 @@ def print_balance_rows(
         + "─" * 14
         + "┴"
         + "─" * 14
-        + "┘"
+        + "╯"
     )
 
 
@@ -118,21 +118,7 @@ def print_balance_column(
     # Print the header
     print()
     print(spacing_before_title + account_title + spacing_between + label + underlined_number)
-    print(
-        "┌"
-        + "─" * 11
-        + "┬"
-        + "─" * 50
-        + "┬"
-        + "─" * 10
-        + "┬"
-        + "─" * 14
-        + "┬"
-        + "─" * 14
-        + "┬"
-        + "─" * 14
-        + "┐"
-    )
+    print("╭" + "─" * 11 + "┬" + "─" * 50 + "┬" + "─" * 10 + "┬" + "─" * 14 + "┬" + "─" * 14 + "┬" + "─" * 14 + "╮")
 
     # Print the column headers
     print(
@@ -217,8 +203,6 @@ if __name__ == "__main__":
         ),
     ]
 
-    balance_column = BalanceColumnDisplay(
-        account_title="Cash", account_number=100, transactions=items
-    )
+    balance_column = BalanceColumnDisplay(account_title="Cash", account_number=100, transactions=items)
 
     print_balance_column(balance_column)

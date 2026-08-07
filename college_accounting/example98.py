@@ -87,26 +87,16 @@ if __name__ == '__main__':
         description='Abby Todd invested $5,000 cash in the new employment agency.',
     )
     entry = sqlite_repo.entries.add(entry)
-    transaction1 = Transaction(
-        transaction_id=0, entry_id=entry.entry_id, account_number=111, debit=5000, credit=0
-    )
-    transaction2 = Transaction(
-        transaction_id=0, entry_id=entry.entry_id, account_number=311, debit=0, credit=5000
-    )
+    transaction1 = Transaction(transaction_id=0, entry_id=entry.entry_id, account_number=111, debit=5000, credit=0)
+    transaction2 = Transaction(transaction_id=0, entry_id=entry.entry_id, account_number=311, debit=0, credit=5000)
     transaction1 = sqlite_repo.transactions.add(transaction1)
     transaction2 = sqlite_repo.transactions.add(transaction2)
 
     # 4th: Bought equipment for cash, $200
-    entry = Entry(
-        entry_id=0, date=datetime(2010, 3, 4), description='Bought equipment for cash, $200'
-    )
+    entry = Entry(entry_id=0, date=datetime(2010, 3, 4), description='Bought equipment for cash, $200')
     entry = sqlite_repo.entries.add(entry)
-    transaction1 = Transaction(
-        transaction_id=0, entry_id=entry.entry_id, account_number=141, debit=200, credit=0
-    )
-    transaction2 = Transaction(
-        transaction_id=0, entry_id=entry.entry_id, account_number=111, debit=0, credit=200
-    )
+    transaction1 = Transaction(transaction_id=0, entry_id=entry.entry_id, account_number=141, debit=200, credit=0)
+    transaction2 = Transaction(transaction_id=0, entry_id=entry.entry_id, account_number=111, debit=0, credit=200)
     transaction1 = sqlite_repo.transactions.add(transaction1)
     transaction2 = sqlite_repo.transactions.add(transaction2)
 
@@ -118,62 +108,40 @@ if __name__ == '__main__':
         description='Earned employment fee commission, $200, but payment from Blue Co. will not be received until June',
     )
     entry = sqlite_repo.entries.add(entry)
-    transaction1 = Transaction(
-        transaction_id=0, entry_id=entry.entry_id, account_number=112, debit=200, credit=0
-    )
-    transaction2 = Transaction(
-        transaction_id=0, entry_id=entry.entry_id, account_number=411, debit=0, credit=200
-    )
+    transaction1 = Transaction(transaction_id=0, entry_id=entry.entry_id, account_number=112, debit=200, credit=0)
+    transaction2 = Transaction(transaction_id=0, entry_id=entry.entry_id, account_number=411, debit=0, credit=200)
     transaction1 = sqlite_repo.transactions.add(transaction1)
     transaction2 = sqlite_repo.transactions.add(transaction2)
 
     # 6th
     entry = Entry(entry_id=0, date=datetime(2010, 3, 6), description='Paid wages expense, $300')
     entry = sqlite_repo.entries.add(entry)
-    t1 = Transaction(
-        transaction_id=0, entry_id=entry.entry_id, account_number=511, debit=300, credit=0
-    )
-    t2 = Transaction(
-        transaction_id=0, entry_id=entry.entry_id, account_number=111, debit=0, credit=300
-    )
+    t1 = Transaction(transaction_id=0, entry_id=entry.entry_id, account_number=511, debit=300, credit=0)
+    t2 = Transaction(transaction_id=0, entry_id=entry.entry_id, account_number=111, debit=0, credit=300)
     t1 = sqlite_repo.transactions.add(t1)
     t2 = sqlite_repo.transactions.add(t2)
 
     # New entry
     entry = Entry(entry_id=0, date=datetime(2010, 3, 7), description='Personal Withdrawals')
     entry = sqlite_repo.entries.add(entry)
-    t1 = Transaction(
-        transaction_id=0, entry_id=entry.entry_id, account_number=321, debit=75, credit=0
-    )
-    t2 = Transaction(
-        transaction_id=0, entry_id=entry.entry_id, account_number=111, debit=0, credit=75
-    )
+    t1 = Transaction(transaction_id=0, entry_id=entry.entry_id, account_number=321, debit=75, credit=0)
+    t2 = Transaction(transaction_id=0, entry_id=entry.entry_id, account_number=111, debit=0, credit=75)
     t1 = sqlite_repo.transactions.add(t1)
     t2 = sqlite_repo.transactions.add(t2)
 
     # New entry
     entry = Entry(entry_id=0, date=datetime(2010, 3, 9), description='Cash fees')
     entry = sqlite_repo.entries.add(entry)
-    t1 = Transaction(
-        transaction_id=0, entry_id=entry.entry_id, account_number=111, debit=1200, credit=0
-    )
-    t2 = Transaction(
-        transaction_id=0, entry_id=entry.entry_id, account_number=411, debit=0, credit=1200
-    )
+    t1 = Transaction(transaction_id=0, entry_id=entry.entry_id, account_number=111, debit=1200, credit=0)
+    t2 = Transaction(transaction_id=0, entry_id=entry.entry_id, account_number=411, debit=0, credit=1200)
     t1 = sqlite_repo.transactions.add(t1)
     t2 = sqlite_repo.transactions.add(t2)
 
     # New entry
-    entry = Entry(
-        entry_id=0, date=datetime(2010, 3, 15), description='Paid cash for supplies, $200'
-    )
+    entry = Entry(entry_id=0, date=datetime(2010, 3, 15), description='Paid cash for supplies, $200')
     entry = sqlite_repo.entries.add(entry)
-    t1 = Transaction(
-        transaction_id=0, entry_id=entry.entry_id, account_number=131, debit=200, credit=0
-    )
-    t2 = Transaction(
-        transaction_id=0, entry_id=entry.entry_id, account_number=111, debit=0, credit=200
-    )
+    t1 = Transaction(transaction_id=0, entry_id=entry.entry_id, account_number=131, debit=200, credit=0)
+    t2 = Transaction(transaction_id=0, entry_id=entry.entry_id, account_number=111, debit=0, credit=200)
     t1 = sqlite_repo.transactions.add(t1)
     t2 = sqlite_repo.transactions.add(t2)
 
@@ -184,12 +152,8 @@ if __name__ == '__main__':
         description='Telephone bill received but not paid, $180',
     )
     entry = sqlite_repo.entries.add(entry)
-    t1 = Transaction(
-        transaction_id=0, entry_id=entry.entry_id, account_number=521, debit=180, credit=0
-    )
-    t2 = Transaction(
-        transaction_id=0, entry_id=entry.entry_id, account_number=211, debit=0, credit=180
-    )
+    t1 = Transaction(transaction_id=0, entry_id=entry.entry_id, account_number=521, debit=180, credit=0)
+    t2 = Transaction(transaction_id=0, entry_id=entry.entry_id, account_number=211, debit=0, credit=180)
     t1 = sqlite_repo.transactions.add(t1)
     t2 = sqlite_repo.transactions.add(t2)
 
@@ -200,12 +164,8 @@ if __name__ == '__main__':
         description='Advertising bill received but not paid, $400',
     )
     entry = sqlite_repo.entries.add(entry)
-    t1 = Transaction(
-        transaction_id=0, entry_id=entry.entry_id, account_number=531, debit=400, credit=0
-    )
-    t2 = Transaction(
-        transaction_id=0, entry_id=entry.entry_id, account_number=211, debit=0, credit=400
-    )
+    t1 = Transaction(transaction_id=0, entry_id=entry.entry_id, account_number=531, debit=400, credit=0)
+    t2 = Transaction(transaction_id=0, entry_id=entry.entry_id, account_number=211, debit=0, credit=400)
     t1 = sqlite_repo.transactions.add(t1)
     t2 = sqlite_repo.transactions.add(t2)
 
@@ -215,17 +175,11 @@ if __name__ == '__main__':
     print_length = 120
     print()
     print(
-        '    Date   |  Account Titles and Description'
-        + ' ' * (print_length - 77)
-        + '| PR  |     Dr     |     Cr     |'
+        '    Date   |  Account Titles and Description' + ' ' * (print_length - 77) + '| PR  |     Dr     |     Cr     |'
     )
     print('-' * print_length)
-    print(
-        f'''{journal[0][2][:4]}  |    |{' ' * (print_length - 45)}|     |            |            |'''
-    )
-    print(
-        f'''  {journal[0][2][5:7]}  |    |{' ' * (print_length - 45)}|     |            |            |'''
-    )
+    print(f'''{journal[0][2][:4]}  |    |{' ' * (print_length - 45)}|     |            |            |''')
+    print(f'''  {journal[0][2][5:7]}  |    |{' ' * (print_length - 45)}|     |            |            |''')
     for line in journal:
 
         if not i:
@@ -250,15 +204,11 @@ if __name__ == '__main__':
             dr = f'{line[6]:.2f}'
             n_dr = 10 - len(dr)
             n_cr = 10
-        print(
-            f'''      | {day} | {title + ' ' * n_title} | {line[5]} | {' ' * n_dr + dr} | {' ' * n_cr + cr} |'''
-        )
+        print(f'''      | {day} | {title + ' ' * n_title} | {line[5]} | {' ' * n_dr + dr} | {' ' * n_cr + cr} |''')
 
         if not i:
             n_title = print_length - 50 - len(line[3][: print_length - 50])
-            print(
-                f'''      |    |    {line[3][:print_length-50] + ' ' * n_title} |     |            |            |'''
-            )
+            print(f'''      |    |    {line[3][:print_length-50] + ' ' * n_title} |     |            |            |''')
             print(f'''      |    |{' ' * (print_length - 45)}|     |            |            |''')
 
     delete_database(db_path)
