@@ -1,5 +1,5 @@
 [project]
-name = "college_accounting"
+name = "accounting"
 version = "0.1.0"
 description = "A simple accounting system with dunder addition support"
 authors = [

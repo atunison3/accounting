@@ -1,388 +1,260 @@
-import sqlite3
-import tempfile
+import time
 import unittest
-from pathlib import Path
+from sqlite3 import IntegrityError, Connection
 
-from accounting.database.create_db import create_db
-
-USERS = [
-    ("jsmith", "Justin", "Smith", "jsmith@example.com"),
-]
-BUSINESSES = [
-    ("J. T. Smith CPA Services", 1978, 1, 1),
-]
-ACCOUNTS = [
-    (1, 110, "Cash", "Asset", "Cash available to the business", 1, 1),
-    (1, 210, "Accounts Payable", "Liability", "Amounts owed to vendors and suppliers", 1, 1),
-    (1, 310, "J. T. Smith Capital", "Equity", "Owner capital invested in the business", 1, 1),
-    (1, 410, "Fees Earned", "Revenue", "Revenue earned from CPA services", 1, 1),
-    (1, 510, "Expenses", "Expense", "General business expenses", 1, 1),
-]
-ACCOUNTING_TRANSACTIONS = [
-    ("1978-03-01", "Paid the rent for March", None, 1, 1),
-    ("1978-03-01", "Paid February's telephone bill", None, 1, 1),
-    ("1978-03-02", "Received cash for services from A. B. Smith", None, 1, 1),
-    ("1978-03-02", "Paid February's electric bill", None, 1, 1),
-    ("1978-03-03", "Received cash for services from Bill Tooley", None, 1, 1),
-    ("1978-03-03", "Paid the secretary's weekly salary", None, 1, 1),
-    ("1978-03-04", "Paid dues to the AICPA", None, 1, 1),
-    ("1978-03-04", "Paid business license fee", None, 1, 1),
-]
-TRANSACTION_LINES = [
-    # TransactionId, AccountId, AmountCents, IsDebit, CreatedBy, UpdatedBy
-    (1, 5, 17_500, 1, 1, 1),  # Paid rent - debiting expense
-    (1, 1, 17_500, 0, 1, 1),  # Paid rent - crediting cash
-    (2, 5, 3_700, 1, 1, 1),
-    (2, 1, 3_700, 0, 1, 1),
-    (3, 1, 2_500, 1, 1, 1),
-    (3, 4, 2_500, 0, 1, 1),
-    (4, 5, 1_700, 1, 1, 1),
-    (4, 1, 1_700, 0, 1, 1),
-    (5, 1, 4_000, 1, 1, 1),
-    (5, 4, 4_000, 0, 1, 1),
-    (6, 5, 7_500, 1, 1, 1),
-    (6, 1, 7_500, 0, 1, 1),
-    (7, 5, 2_500, 1, 1, 1),
-    (7, 1, 2_500, 0, 1, 1),
-    (8, 5, 10_000, 1, 1, 1),
-    (8, 1, 10_000, 0, 1, 1),
-]
+from accounting.infrastructure.sqlite.connection import create_connection
 
 
-class TestCreateDatabase(unittest.TestCase):
-    def setUp(self) -> None:
-        self.temp_directory = tempfile.TemporaryDirectory()
-        self.db_path = Path(self.temp_directory.name) / "accounting" / "database-test.db"
+class TestDatabaseUserOperation(unittest.TestCase):
+    conn: Connection
 
-        # Remove an existing test database, if present.
-        self.db_path.unlink(missing_ok=True)
+    @classmethod
+    def setUpClass(cls):
+        cls.conn = create_connection(":memory:")
 
-        create_db(self.db_path)
+    def test_create_user(self) -> None:
+        #       Username, First,   Last,    Email
+        user = ("alice", "Alice", "Smith", "asmith@example.com")
 
-        # Add the user
-        with sqlite3.connect(self.db_path) as conn:
-            # Users
-            conn.executemany(
-                """
-                INSERT INTO User (
-                    Username,
-                    FirstName,
-                    LastName,
-                    Email
-                )
-                VALUES (?, ?, ?, ?)
-                """,
-                USERS,
-            )
+        # Add user
+        sql = """
+        INSERT INTO users
+            (username, first_name, last_name, email)
+        VALUES
+            (?, ?, ?, ?)
+        """
+        self.conn.execute(sql, user)
+        self.conn.commit()
 
-            # Add the business
-            conn.executemany(
-                """
-                INSERT INTO Business (
-                    Title,
-                    Established,
-                    CreatedBy,
-                    UpdatedBy
-                )
-                VALUES (?, ?, ?, ?)
-                """,
-                BUSINESSES,
-            )
+        sql = "SELECT * FROM users;"
+        results = self.conn.execute(sql).fetchall()
 
-            # Add the accounts
-            conn.executemany(
-                """
-                INSERT INTO Account (
-                    BusinessId,
-                    AccountNumber,
-                    AccountName,
-                    AccountType,
-                    Description,
-                    CreatedBy,
-                    UpdatedBy
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                """,
-                ACCOUNTS,
-            )
+        self.assertEqual(len(results), 1)
 
-            # Add the accounting transactions
-            conn.executemany(
-                """
-                INSERT INTO AccountingTransaction (
-                    TransactionDate,
-                    Description,
-                    PostingReference,
-                    CreatedBy,
-                    UpdatedBy
-                )
-                VALUES (?, ?, ?, ?, ?)
-                """,
-                ACCOUNTING_TRANSACTIONS,
-            )
+        user = results[0]
+        self.assertEqual(user[0], 1)
+        self.assertEqual(user[1], "alice")
+        self.assertEqual(user[2], "Alice")
+        self.assertEqual(user[3], "Smith")
+        self.assertEqual(user[4], "asmith@example.com")
+        self.assertEqual(user[5], 1)
+        self.assertIsNotNone(user[6])
+        self.assertIsNotNone(user[7])
+        self.assertIsNone(user[8])
 
-            # Add the transaction lines
-            conn.executemany(
-                """
-                INSERT INTO TransactionLine (
-                    TransactionId,
-                    AccountId,
-                    AmountCents,
-                    IsDebit,
-                    CreatedBy,
-                    UpdatedBy
-                )
-                VALUES (?, ?, ?, ?, ?, ?)
-                """,
-                TRANSACTION_LINES,
-            )
+    def test_create_user_invalid_email(self) -> None:
+        sql = """
+        INSERT INTO users
+            (username, first_name, last_name, email)
+        VALUES
+            (?, ?, ?, ?)
+        """
 
-            conn.commit()
+        with self.assertRaises(IntegrityError):
+            user = ("alice", "Alice", "Smith", "fake_email")
+            self.conn.execute(sql, user)
 
-    def tearDown(self) -> None:
-        self.temp_directory.cleanup()
+        with self.assertRaises(IntegrityError):
+            user = ("alice", "Alice", "Smith", "fake_emailexample.com")
+            self.conn.execute(sql, user)
 
-    def test_create_db_creates_database_file(self) -> None:
-        self.assertTrue(self.db_path.exists())
-        self.assertTrue(self.db_path.is_file())
+        with self.assertRaises(IntegrityError):
+            user = ("alice", "Alice", "Smith", "fake_email@example")
+            self.conn.execute(sql, user)
 
-    def test_create_db_creates_expected_table(self) -> None:
-        with sqlite3.connect(self.db_path) as conn:
-            row = conn.execute(
-                """
-                SELECT name
-                FROM sqlite_master
-                WHERE type = 'table'
-                  AND name = ?
-                """,
-                ("Business",),
-            ).fetchone()
+    def test_update_user_updated_at(self) -> None:
+        sql = """
+        UPDATE users
+        SET last_name = ?
+        WHERE id = ?;"""
+        user = ("Doe", 1)
 
-        self.assertIsNotNone(row)
+        # Sleep delay to account for speed of code execute in updated timestamp
+        time.sleep(1)
+        self.conn.execute(sql, user)
 
-    def test_create_db_can_be_called_again(self) -> None:
-        create_db(self.db_path)
+        sql = "SELECT * FROM users;"
+        user = self.conn.execute(sql).fetchone()
 
-        self.assertTrue(self.db_path.exists())
+        self.assertEqual(user[3], "Doe")
+        self.assertNotEqual(user[6], user[7])
 
-    def test_user_exists(self) -> None:
-        with sqlite3.connect(self.db_path) as conn:
-            conn.row_factory = sqlite3.Row
 
-            user = conn.execute(
-                """
-                SELECT
-                    Id,
-                    Username,
-                    FirstName,
-                    LastName,
-                    Email,
-                    IsActive,
-                    CreatedAt,
-                    UpdatedAt,
-                    DeletedAt
-                FROM User
-                WHERE Username = ?
-                """,
-                ("jsmith",),
-            ).fetchone()
+class TestDatabaseBusinessOperation(unittest.TestCase):
+    conn: Connection
 
-        self.assertIsNotNone(user)
+    @classmethod
+    def setUpClass(cls):
+        cls.conn = create_connection(":memory:")
 
-        assert user is not None  # nosec: B101
-
-        self.assertEqual(user["Username"], "jsmith")
-        self.assertEqual(user["FirstName"], "Justin")
-        self.assertEqual(user["LastName"], "Smith")
-        self.assertEqual(user["Email"], "jsmith@example.com")
-        self.assertEqual(user["IsActive"], 1)
-        self.assertIsNotNone(user["CreatedAt"])
-        self.assertIsNotNone(user["UpdatedAt"])
-        self.assertIsNone(user["DeletedAt"])
-
-    def test_business_exists(self) -> None:
-        with sqlite3.connect(self.db_path) as conn:
-            conn.row_factory = sqlite3.Row
-
-            business = conn.execute(
-                """
-                SELECT
-                    Business.Id,
-                    Business.Title,
-                    Business.TaxId,
-                    Business.IsBusinessActive,
-                    Business.Established,
-                    Business.CreatedBy,
-                    Business.UpdatedBy,
-                    User.FirstName,
-                    User.LastName
-                FROM Business
-                JOIN User
-                    ON Business.CreatedBy = User.Id
-                WHERE Business.Title = ?
-                """,
-                ("J. T. Smith CPA Services",),
-            ).fetchone()
-
-        self.assertIsNotNone(business)
-        assert business is not None  # nosec: B101
-
-        self.assertEqual(business["Title"], "J. T. Smith CPA Services")
-        self.assertIsNone(business["TaxId"])
-        self.assertEqual(business["IsBusinessActive"], 1)
-        self.assertEqual(business["Established"], 1978)
-        self.assertEqual(business["FirstName"], "Justin")
-        self.assertEqual(business["LastName"], "Smith")
-        self.assertEqual(business["CreatedBy"], 1)
-        self.assertEqual(business["UpdatedBy"], 1)
-
-    def test_accounts_exist(self) -> None:
-        with sqlite3.connect(self.db_path) as conn:
-            conn.row_factory = sqlite3.Row
-
-            accounts = conn.execute(
-                """
-                SELECT
-                    BusinessId,
-                    AccountNumber,
-                    AccountName,
-                    AccountType,
-                    Description,
-                    IsAccountActive,
-                    CreatedAt,
-                    CreatedBy,
-                    UpdatedAt,
-                    UpdatedBy,
-                    DeletedAt,
-                    DeletedBy
-                FROM Account
-                WHERE BusinessId = ?
-                ORDER BY AccountNumber
-                """,
-                (1,),
-            ).fetchall()
-
-        self.assertEqual(len(accounts), 5)
-
-        expected_accounts = [
-            (110, "Cash", "Asset"),
-            (210, "Accounts Payable", "Liability"),
-            (310, "J. T. Smith Capital", "Equity"),
-            (410, "Fees Earned", "Revenue"),
-            (510, "Expenses", "Expense"),
+        # Enter a couple of users
+        users = [
+            ("asmith", "Alice", "Smith", "asmith@example.com"),
+            ("bbarker", "Bob", "Barker", "bbarker@website.com"),
         ]
+        sql = """
+            INSERT INTO users
+                (username, first_name, last_name, email)
+            VALUES
+                (?, ?, ?, ?)"""
 
-        actual_accounts = [
-            (
-                account["AccountNumber"],
-                account["AccountName"],
-                account["AccountType"],
-            )
-            for account in accounts
+        cls.conn.executemany(sql, users)
+        cls.conn.commit()
+
+    def test_create_business(self) -> None:
+        business = ("Alice INC.", "12-3456789", "2026-08-08", 7, 1)
+
+        sql = """
+            INSERT INTO businesses
+                (title, tax_id, established, tax_year_end_month, created_by)
+            VALUES
+                (?, ?, ?, ?, ?);"""
+
+        self.conn.execute(sql, business)
+
+        sql = "SELECT * FROM businesses"
+        results = self.conn.execute(sql).fetchall()
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0][0], 1)
+        self.assertEqual(results[0][1], "Alice INC.")
+        self.assertEqual(results[0][2], "12-3456789")
+        self.assertEqual(results[0][3], 1)
+        self.assertEqual(results[0][4], "2026-08-08")
+        self.assertEqual(results[0][5], 7)
+        self.assertIsNotNone(results[0][6])
+        self.assertEqual(results[0][7], 1)
+        self.assertIsNotNone(results[0][8])
+        self.assertIsNone(results[0][9], 1)
+        self.assertIsNone(results[0][10])
+        self.assertIsNone(results[0][11])
+
+    def test_deleted(self) -> None:
+        business = ("Alice INC.", "12-3456789", "2026-08-08", 7, 1)
+
+        sql = """
+            INSERT INTO businesses
+                (title, tax_id, established, tax_year_end_month, created_by)
+            VALUES
+                (?, ?, ?, ?, ?);"""
+
+        self.conn.execute(sql, business)
+
+        sql = """
+            UPDATE businesses
+            SET
+                deleted_by = ?,
+                deleted_at = CURRENT_TIMESTAMP
+            WHERE id = ?"""
+        self.conn.execute(sql, (1, 1))
+
+        sql = """SELECT * FROM businesses"""
+        business = self.conn.execute(sql).fetchone()
+
+        self.assertEqual(business[-1], 1)
+        self.assertIsNotNone(business[-2])
+
+    def test_valid_tax_id(self) -> None:
+        sql = """
+            INSERT INTO businesses
+                (title, tax_id, established, tax_year_end_month, created_by)
+            VALUES
+                (?, ?, ?, ?, ?);"""
+
+        with self.assertRaises(IntegrityError):
+            # Missing a digit
+            business = ("Alice INC.", "12-345678", "2026-08-08", 7, 1)
+            self.conn.execute(sql, business)
+
+        with self.assertRaises(IntegrityError):
+            business = ("Alice INC.", "123456789", "2026-08-08", 7, 1)
+            self.conn.execute(sql, business)
+
+    def test_valid_tax_year(self) -> None:
+        sql = """
+            INSERT INTO businesses
+                (title, tax_id, established, tax_year_end_month, created_by)
+            VALUES
+                (?, ?, ?, ?, ?);"""
+
+        with self.assertRaises(IntegrityError):
+            business = ("Alice INC.", "12-3456789", "2026-08-08", 0, 1)
+            self.conn.execute(sql, business)
+        with self.assertRaises(IntegrityError):
+            business = ("Alice INC.", "12-3456789", "2026-08-08", -1, 1)
+            self.conn.execute(sql, business)
+        with self.assertRaises(IntegrityError):
+            business = ("Alice INC.", "12-3456789", "2026-08-08", 13, 1)
+            self.conn.execute(sql, business)
+        with self.assertRaises(IntegrityError):
+            business = ("Alice INC.", "12-3456789", "2026-08-08", 999999, 1)
+            self.conn.execute(sql, business)
+
+    def test_valid_established_date(self) -> None:
+        sql = """
+            INSERT INTO businesses
+                (title, tax_id, established, tax_year_end_month, created_by)
+            VALUES
+                (?, ?, ?, ?, ?);"""
+
+        with self.assertRaises(IntegrityError):
+            business = ("Alice INC.", "12-3456789", "May, 2026", 12, 1)
+            self.conn.execute(sql, business)
+        with self.assertRaises(IntegrityError):
+            business = ("Alice INC.", "12-3456789", "20260808", -1, 1)
+            self.conn.execute(sql, business)
+
+
+class TestDatabaseAccountOperation(unittest.TestCase):
+    conn: Connection
+
+    @classmethod
+    def setUpClass(cls):
+        cls.conn = create_connection(":memory:")
+
+        # Enter a couple of users
+        users = [
+            ("asmith", "Alice", "Smith", "asmith@example.com"),
+            ("bbarker", "Bob", "Barker", "bbarker@website.com"),
         ]
+        sql = """
+            INSERT INTO users
+                (username, first_name, last_name, email)
+            VALUES
+                (?, ?, ?, ?)"""
 
-        self.assertEqual(actual_accounts, expected_accounts)
+        cls.conn.executemany(sql, users)
 
-        for account in accounts:
-            self.assertEqual(account["BusinessId"], 1)
-            self.assertEqual(account["IsAccountActive"], 1)
-            self.assertEqual(account["CreatedBy"], 1)
-            self.assertEqual(account["UpdatedBy"], 1)
+        business = ("Alice INC.", "12-3456789", "2026-08-08", 7, 1)
 
-            self.assertIsNotNone(account["CreatedAt"])
-            self.assertIsNotNone(account["UpdatedAt"])
-            self.assertIsNone(account["DeletedAt"])
-            self.assertIsNone(account["DeletedBy"])
+        sql = """
+            INSERT INTO businesses
+                (title, tax_id, established, tax_year_end_month, created_by)
+            VALUES
+                (?, ?, ?, ?, ?);"""
 
-    def test_accounting_transactions_exist(self) -> None:
-        with sqlite3.connect(self.db_path) as conn:
-            conn.row_factory = sqlite3.Row
+        cls.conn.execute(sql, business)
+        cls.conn.commit()
 
-            transactions = conn.execute("""
-                SELECT
-                    TransactionDate,
-                    Description,
-                    PostingReference,
-                    CreatedAt,
-                    CreatedBy,
-                    UpdatedAt,
-                    UpdatedBy,
-                    DeletedAt,
-                    DeletedBy
-                FROM AccountingTransaction
-                ORDER BY TransactionDate, Id
-                """).fetchall()
+    def test_account_creation(self) -> None:
+        account = (1, 110, "Cash", "Asset", "Cash", 1)
+        sql = """
+            INSERT INTO accounts
+                (business_id, account_number, account_name, account_type, description, created_by)
+            VALUES
+                (?, ?, ?, ?, ?, ?)"""
+        self.conn.execute(sql, account)
 
-        self.assertEqual(len(transactions), len(ACCOUNTING_TRANSACTIONS))
+        sql = "SELECT * FROM accounts"
+        account = self.conn.execute(sql).fetchone()
 
-        actual_transactions = [
-            (
-                transaction["TransactionDate"],
-                transaction["Description"],
-                transaction["PostingReference"],
-                transaction["CreatedBy"],
-                transaction["UpdatedBy"],
-            )
-            for transaction in transactions
-        ]
-
-        self.assertEqual(actual_transactions, ACCOUNTING_TRANSACTIONS)
-
-        for transaction in transactions:
-            self.assertIsNotNone(transaction["CreatedAt"])
-            self.assertIsNotNone(transaction["UpdatedAt"])
-            self.assertIsNone(transaction["DeletedAt"])
-            self.assertIsNone(transaction["DeletedBy"])
-
-    def test_transaction_lines_exist(self) -> None:
-        with sqlite3.connect(self.db_path) as conn:
-            conn.row_factory = sqlite3.Row
-
-            transaction_lines = conn.execute("""
-                SELECT
-                    TransactionId,
-                    AccountId,
-                    AmountCents,
-                    IsDebit,
-                    CreatedAt,
-                    CreatedBy,
-                    UpdatedAt,
-                    UpdatedBy,
-                    DeletedAt,
-                    DeletedBy
-                FROM TransactionLine
-                ORDER BY TransactionId, Id
-                """).fetchall()
-
-        self.assertEqual(
-            len(transaction_lines),
-            len(TRANSACTION_LINES),
-        )
-
-        actual_transaction_lines = [
-            (
-                line["TransactionId"],
-                line["AccountId"],
-                line["AmountCents"],
-                line["IsDebit"],
-                line["CreatedBy"],
-                line["UpdatedBy"],
-            )
-            for line in transaction_lines
-        ]
-
-        self.assertEqual(
-            actual_transaction_lines,
-            TRANSACTION_LINES,
-        )
-
-        for line in transaction_lines:
-            self.assertIsNotNone(line["CreatedAt"])
-            self.assertIsNotNone(line["UpdatedAt"])
-            self.assertEqual(line["CreatedBy"], 1)
-            self.assertEqual(line["UpdatedBy"], 1)
-            self.assertIsNone(line["DeletedAt"])
-            self.assertIsNone(line["DeletedBy"])
+        self.assertEqual(account[0], 1)
+        self.assertEqual(account[1], 1)
+        self.assertEqual(account[2], 110)
+        self.assertEqual(account[3], "Cash")
+        self.assertEqual(account[4], "Asset")
+        self.assertEqual(account[5], "Cash")
+        self.assertEqual(account[6], 1)
 
 
 if __name__ == "__main__":
