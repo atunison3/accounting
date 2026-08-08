@@ -1,0 +1,57 @@
+# .pre-commit-config.yaml
+# Uses tools from the project's .venv so versions stay in sync.
+# Hooks only run against files under accounting/ and tests/.
+
+repos:
+  # Trailing whitespace (standard pre-commit hook)
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        files: ^(accounting|tests)/
+
+  # All other tools run from the local .venv
+  - repo: local
+    hooks:
+      - id: black
+        name: black
+        entry: .venv/bin/black
+        language: system
+        types: [python]
+        files: ^(accounting|tests)/
+
+      - id: ruff-check
+        name: ruff check
+        entry: .venv/bin/ruff
+        language: system
+        types: [python]
+        files: ^(accounting|tests)/
+        args: [check]
+
+      - id: mypy
+        name: mypy
+        entry: .venv/bin/mypy
+        language: system
+        types: [python]
+        files: ^(accounting|tests)/
+        # Uncomment the next two lines if you prefer checking whole packages
+        # instead of only the staged files:
+        pass_filenames: false
+        args: [accounting, tests]
+
+      - id: bandit
+        name: bandit
+        entry: .venv/bin/bandit
+        language: system
+        types: [python]
+        files: ^(accounting|tests)/
+        args: [-r, --quiet -ll -lll]
+        # Add -ll (or -lll) if you only want medium/high severity findings
+
+      - id: unittest
+        name: unittest
+        entry: .venv/bin/python -m unittest discover -s tests -p "test_*.py"
+        language: system
+        pass_filenames: false
+        # Always run the test suite (even if only non-Python files changed)
+        always_run: true
