@@ -42,7 +42,7 @@ class TestConnection(unittest.TestCase):
                 "users",
                 "businesses",
                 "accounts",
-                "transactions",
+                "accounting_transactions",
                 "transaction_lines",
             }
             self.assertTrue(expected.issubset(tables), f"Missing tables: {expected - tables}")
@@ -130,6 +130,14 @@ class TestSqliteRepositories(unittest.TestCase):
     # ------------------------------------------------------------------
 
     def test_business_add_and_get(self) -> None:
+        user = User(
+            username="alice",
+            first_name="Alice",
+            last_name="Smith",
+            email="asmith@website.org",
+            created_by=1,
+        )
+        _ = self.user_repo.add(user)
         business = Business(
             title="Acme Corp",
             tax_id="12-3456789",
@@ -149,19 +157,53 @@ class TestSqliteRepositories(unittest.TestCase):
         self.assertTrue(loaded.is_business_active)
 
     def test_business_get_all(self) -> None:
-        self.business_repo.add(Business(title="Beta LLC"))
-        self.business_repo.add(Business(title="Alpha Inc"))
+        user = User(
+            username="alice",
+            first_name="Alice",
+            last_name="Smith",
+            email="asmith@website.org",
+            created_by=1,
+        )
+        _ = self.user_repo.add(user)
+        business = Business(
+            title="Acme Corp",
+            tax_id="12-3456789",
+            established=2010,
+            created_by=1,
+        )
+        _ = self.business_repo.add(business)
+        business = Business(
+            title="J. T. Smith Accounting",
+            tax_id="13-3456789",
+            established=2011,
+            created_by=1,
+        )
+        _ = self.business_repo.add(business)
 
         all_businesses = self.business_repo.get_all()
         titles = [b.title for b in all_businesses]
-        self.assertEqual(titles, ["Alpha Inc", "Beta LLC"])  # ordered by title
+        self.assertEqual(titles, ["Acme Corp", "J. T. Smith Accounting"])  # ordered by title
 
     # ------------------------------------------------------------------
     # AccountRepository
     # ------------------------------------------------------------------
 
     def test_account_add_and_get(self) -> None:
-        business_id = self.business_repo.add(Business(title="Test Co"))
+        user = User(
+            username="alice",
+            first_name="Alice",
+            last_name="Smith",
+            email="asmith@website.org",
+            created_by=1,
+        )
+        _ = self.user_repo.add(user)
+        business = Business(
+            title="Acme Corp",
+            tax_id="12-3456789",
+            established=2010,
+            created_by=1,
+        )
+        business_id = self.business_repo.add(business)
         account = Account(
             business_id=business_id,
             account_number=1000,
@@ -269,21 +311,21 @@ class TestSqliteRepositories(unittest.TestCase):
         )
         lines = [
             TransactionLine(
-                transaction_id=0,
+                transaction_id=1,
                 account_id=cash_id,
                 amount_cents=15000,
                 is_debit=True,
             ),
             TransactionLine(
-                transaction_id=0,
+                transaction_id=1,
                 account_id=sales_id,
                 amount_cents=15000,
                 is_debit=False,
             ),
         ]
 
-        tx_id = self.tx_repo.add(tx, lines, user_id=user_id)
-        self.assertGreater(tx_id, 0)
+        tx_id = self.tx_repo.add(tx, lines, user_id=user_id) - 1
+        self.assertEqual(tx_id, 1)
 
         loaded = self.tx_repo.get_by_id(tx_id)
         self.assertIsNotNone(loaded)

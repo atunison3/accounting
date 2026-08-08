@@ -1,7 +1,7 @@
 import sqlite3
 from pathlib import Path
 
-SQL = """
+SCHEMA = """
     CREATE TABLE IF NOT EXISTS User (
         Id INTEGER PRIMARY KEY,
         Username TEXT NOT NULL,
@@ -110,5 +110,5 @@ def create_db(db_path: Path) -> None:
     db_path.parent.mkdir(parents=True, exist_ok=True)
 
     with sqlite3.connect(db_path) as conn:
-        conn.executescript(SQL)
+        conn.executescript(SCHEMA)
         conn.commit()

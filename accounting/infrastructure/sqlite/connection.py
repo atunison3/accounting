@@ -18,12 +18,17 @@ CREATE TABLE IF NOT EXISTS users (
     email       TEXT    NOT NULL UNIQUE,
     is_active   INTEGER NOT NULL DEFAULT 1,
 
-    created_at  TEXT,
+    created_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by  INTEGER,
-    updated_at  TEXT,
+    updated_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_by  INTEGER,
     deleted_at  TEXT,
-    deleted_by  INTEGER
+    deleted_by  INTEGER,
+
+    CHECK (
+        (deleted_at IS NULL AND deleted_by IS NULL) OR
+        (deleted_at IS NOT NULL AND deleted_by IS NOT NULL)
+    )
 );
 
 CREATE TABLE IF NOT EXISTS businesses (
@@ -33,12 +38,21 @@ CREATE TABLE IF NOT EXISTS businesses (
     is_business_active  INTEGER NOT NULL DEFAULT 1,
     established         INTEGER,
 
-    created_at  TEXT,
+    created_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by  INTEGER,
-    updated_at  TEXT,
+    updated_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_by  INTEGER,
     deleted_at  TEXT,
-    deleted_by  INTEGER
+    deleted_by  INTEGER,
+
+    CHECK (
+        (deleted_at IS NULL AND deleted_by IS NULL) OR
+        (deleted_at IS NOT NULL AND deleted_by IS NOT NULL)
+    ),
+
+    FOREIGN KEY (created_by) REFERENCES users(id),
+    FOREIGN KEY (updated_by) REFERENCES users(id),
+    FOREIGN KEY (deleted_by) REFERENCES users(id)
 );
 
 CREATE TABLE IF NOT EXISTS accounts (
@@ -50,50 +64,79 @@ CREATE TABLE IF NOT EXISTS accounts (
     description      TEXT,
     is_account_active INTEGER NOT NULL DEFAULT 1,
 
-    created_at  TEXT,
+    created_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by  INTEGER,
-    updated_at  TEXT,
+    updated_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_by  INTEGER,
     deleted_at  TEXT,
-    deleted_by  INTEGER,
+    deleted_by  INTEGER
+
+    CHECK (
+        (deleted_at IS NULL AND deleted_by IS NULL) OR
+        (deleted_at IS NOT NULL AND deleted_by IS NOT NULL)
+    ),
+
+    FOREIGN KEY (created_by) REFERENCES users(id),
+    FOREIGN KEY (updated_by) REFERENCES users(id),
+    FOREIGN KEY (deleted_by) REFERENCES users(id)
 
     UNIQUE (business_id, account_number)
 );
 
-CREATE TABLE IF NOT EXISTS transactions (
+CREATE TABLE IF NOT EXISTS accounting_transactions (
     id                 INTEGER PRIMARY KEY AUTOINCREMENT,
     transaction_date   TEXT    NOT NULL,
     description        TEXT    NOT NULL,
     posting_reference  TEXT,
 
-    created_at  TEXT,
+    created_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by  INTEGER,
-    updated_at  TEXT,
+    updated_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_by  INTEGER,
     deleted_at  TEXT,
     deleted_by  INTEGER
+
+    CHECK (
+        (deleted_at IS NULL AND deleted_by IS NULL) OR
+        (deleted_at IS NOT NULL AND deleted_by IS NOT NULL)
+    ),
+
+    FOREIGN KEY (created_by) REFERENCES users(id),
+    FOREIGN KEY (updated_by) REFERENCES users(id),
+    FOREIGN KEY (deleted_by) REFERENCES users(id)
 );
 
 CREATE TABLE IF NOT EXISTS transaction_lines (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    transaction_id  INTEGER NOT NULL REFERENCES transactions(id),
-    account_id      INTEGER NOT NULL REFERENCES accounts(id),
+    transaction_id  INTEGER NOT NULL,
+    account_id      INTEGER NOT NULL,
     amount_cents    INTEGER NOT NULL CHECK (amount_cents >= 0),
     is_debit        INTEGER NOT NULL,
 
-    created_at  TEXT,
+    created_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by  INTEGER,
-    updated_at  TEXT,
+    updated_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_by  INTEGER,
     deleted_at  TEXT,
     deleted_by  INTEGER
+
+    CHECK (
+        (deleted_at IS NULL AND deleted_by IS NULL) OR
+        (deleted_at IS NOT NULL AND deleted_by IS NOT NULL)
+    ),
+
+    FOREIGN KEY (created_by) REFERENCES users(id),
+    FOREIGN KEY (updated_by) REFERENCES users(id),
+    FOREIGN KEY (deleted_by) REFERENCES users(id),
+    FOREIGN KEY (transaction_id) REFERENCES accounting_transactions(id),
+    FOREIGN KEY (account_id) REFERENCES accounts(id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_accounts_business
     ON accounts(business_id) WHERE deleted_at IS NULL;
 
 CREATE INDEX IF NOT EXISTS idx_transactions_date
-    ON transactions(transaction_date) WHERE deleted_at IS NULL;
+    ON accounting_transactions(transaction_date) WHERE deleted_at IS NULL;
 
 CREATE INDEX IF NOT EXISTS idx_lines_transaction
     ON transaction_lines(transaction_id) WHERE deleted_at IS NULL;

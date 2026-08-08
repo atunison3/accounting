@@ -150,7 +150,10 @@ class SqliteUserRepository(UserRepository):
                 user.updated_by or user.created_by,
             ),
         )
-        return cur.lastrowid  # type: ignore[return-value]
+        last_row_id = cur.lastrowid
+        if not isinstance(last_row_id, int):
+            raise RuntimeError
+        return last_row_id
 
     def get_by_id(self, user_id: int) -> User | None:
         cur = self._conn.cursor()
@@ -196,7 +199,10 @@ class SqliteBusinessRepository(BusinessRepository):
                 business.updated_by or business.created_by,
             ),
         )
-        return cur.lastrowid  # type: ignore[return-value]
+        last_row_id = cur.lastrowid
+        if not isinstance(last_row_id, int):
+            raise RuntimeError
+        return last_row_id
 
     def get_by_id(self, business_id: int) -> Business | None:
         cur = self._conn.cursor()
@@ -241,7 +247,10 @@ class SqliteAccountRepository(AccountRepository):
                 account.updated_by or account.created_by,
             ),
         )
-        return cur.lastrowid  # type: ignore[return-value]
+        last_row_id = cur.lastrowid
+        if not isinstance(last_row_id, int):
+            raise RuntimeError
+        return last_row_id
 
     def get_by_id(self, account_id: int) -> Account | None:
         cur = self._conn.cursor()
@@ -293,7 +302,7 @@ class SqliteTransactionRepository(TransactionRepository):
         # Insert header
         cur.execute(
             """
-            INSERT INTO transactions (
+            INSERT INTO accounting_transactions (
                 transaction_date, description, posting_reference,
                 created_at, created_by, updated_at, updated_by
             ) VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -333,12 +342,15 @@ class SqliteTransactionRepository(TransactionRepository):
                 ),
             )
 
-        return transaction_id
+        last_row_id = cur.lastrowid
+        if not isinstance(last_row_id, int):
+            raise RuntimeError
+        return last_row_id
 
     def get_by_id(self, transaction_id: int) -> AccountingTransaction | None:
         cur = self._conn.cursor()
         cur.execute(
-            "SELECT * FROM transactions WHERE id = ? AND deleted_at IS NULL",
+            "SELECT * FROM accounting_transactions WHERE id = ? AND deleted_at IS NULL",
             (transaction_id,),
         )
         row = cur.fetchone()
@@ -363,7 +375,7 @@ class SqliteTransactionRepository(TransactionRepository):
 
         cur.execute(
             """
-            UPDATE transactions
+            UPDATE accounting_transactions
             SET deleted_at = ?, deleted_by = ?, updated_at = ?, updated_by = ?
             WHERE id = ? AND deleted_at IS NULL
             """,
