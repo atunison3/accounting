@@ -1,1 +1,21 @@
-pandas==2.3.1
+annotated-types==0.8.0
+build==1.5.0
+-e git+https://github.com/atunison3/accounting.git@4b4c3fe5b9a9dcee7e4edd026dd56848a2422553#egg=college_accounting
+dnspython==2.8.0
+email-validator==2.3.0
+future-fstrings==1.2.0
+idna==3.18
+lxml==6.1.1
+numpy==2.5.1
+ordered-set==4.1.0
+packaging==26.3
+pandas==3.0.5
+pydantic==2.13.4
+pydantic_core==2.46.4
+pyecore==0.15.2
+pyproject_hooks==1.2.0
+python-dateutil==2.9.0.post0
+RestrictedPython==8.4
+six==1.17.0
+typing-inspection==0.4.2
+typing_extensions==4.16.0
