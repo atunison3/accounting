@@ -189,7 +189,7 @@ class TestCreateDatabase(unittest.TestCase):
 
         self.assertIsNotNone(user)
 
-        assert user is not None
+        assert user is not None  # nosec: B101
 
         self.assertEqual(user["Username"], "jsmith")
         self.assertEqual(user["FirstName"], "Justin")
@@ -225,7 +225,7 @@ class TestCreateDatabase(unittest.TestCase):
             ).fetchone()
 
         self.assertIsNotNone(business)
-        assert business is not None
+        assert business is not None  # nosec: B101
 
         self.assertEqual(business["Title"], "J. T. Smith CPA Services")
         self.assertIsNone(business["TaxId"])
@@ -298,8 +298,7 @@ class TestCreateDatabase(unittest.TestCase):
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
 
-            transactions = conn.execute(
-                """
+            transactions = conn.execute("""
                 SELECT
                     TransactionDate,
                     Description,
@@ -312,8 +311,7 @@ class TestCreateDatabase(unittest.TestCase):
                     DeletedBy
                 FROM AccountingTransaction
                 ORDER BY TransactionDate, Id
-                """
-            ).fetchall()
+                """).fetchall()
 
         self.assertEqual(len(transactions), len(ACCOUNTING_TRANSACTIONS))
 
@@ -340,8 +338,7 @@ class TestCreateDatabase(unittest.TestCase):
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
 
-            transaction_lines = conn.execute(
-                """
+            transaction_lines = conn.execute("""
                 SELECT
                     TransactionId,
                     AccountId,
@@ -355,8 +352,7 @@ class TestCreateDatabase(unittest.TestCase):
                     DeletedBy
                 FROM TransactionLine
                 ORDER BY TransactionId, Id
-                """
-            ).fetchall()
+                """).fetchall()
 
         self.assertEqual(
             len(transaction_lines),

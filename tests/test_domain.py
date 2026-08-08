@@ -145,7 +145,7 @@ class TestAccount(unittest.TestCase):
                 business_id=1,
                 account_number=110,
                 account_name="Cash",
-                account_type="Something Else",
+                account_type="Something Else",  # type: ignore
             )
 
     def test_account_rejects_non_positive_account_number(self) -> None:

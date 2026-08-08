@@ -3,7 +3,7 @@ from pathlib import Path
 
 SQL = """
     CREATE TABLE IF NOT EXISTS User (
-        Id INTEGER PRIMARY KEY, 
+        Id INTEGER PRIMARY KEY,
         Username TEXT NOT NULL,
         FirstName TEXT NOT NULL,
         LastName TEXT NOT NULL,

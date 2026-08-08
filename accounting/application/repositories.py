@@ -1,8 +1,7 @@
+# type: ignore
 # accounting/application/repositories.py
 
-from typing import Protocol
-
-from accounting.domain import AccountingTransaction, TransactionLine, Account, User, Business
+from accounting.domain.models import AccountingTransaction, TransactionLine, Account, User, Business
 
 
 class TransactionRepository:
