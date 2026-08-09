@@ -1,15 +1,3 @@
-# accounting/infrastructure/sqlite/connection.py
-from __future__ import annotations
-
-import sqlite3
-from pathlib import Path
-from typing import Iterator
-from contextlib import contextmanager
-
-# Get the directory where connection.py is located
-CURRENT_DIR = Path(__file__).resolve().parent
-SCHEMA_FILE_PATH = CURRENT_DIR / "schema.sql"
-SCHEMA = """
 PRAGMA foreign_keys = ON;
 PRAGMA journal_mode = WAL;
 
@@ -167,37 +155,38 @@ CREATE TABLE IF NOT EXISTS accounts_history (
     is_account_active INTEGER NOT NULL DEFAULT 1,
 
     updated_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by  INTEGER,
-    deleted_at  TEXT,
-    deleted_by  INTEGER,
+    updated_by  INTEGER REFERENCES users(id),
 
     CHECK (
         account_type in ('Asset', 'Liability', 'Equity', 'Revenue', 'Expense')
-    ),
-
-    FOREIGN KEY (account_id) REFERENCES accounts(id),
-    FOREIGN KEY (updated_by) REFERENCES users(id),
+    )
 );
 
-CREATE TABLE IF NOT EXISTS AccountingTransactionHistory (
-    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
-    transaction_date   TEXT    NOT NULL,
-    description        TEXT    NOT NULL,
-    posting_reference  TEXT,
+CREATE TABLE IF NOT EXISTS accounting_transaction_history (
+    id                         INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    transaction_id  INTEGER REFERENCES accounting_transactions(id),
+
+    transaction_date           TEXT    NOT NULL,
+    description                TEXT    NOT NULL,
+    posting_reference          TEXT,
 
     updated_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_by  INTEGER,
-    deleted_at  TEXT,
-    deleted_by  INTEGER,
+    updated_by  INTEGER REFERENCES users(id)
+);
 
-    CHECK (
-        (deleted_at IS NULL AND deleted_by IS NULL) OR
-        (deleted_at IS NOT NULL AND deleted_by IS NOT NULL)
-    ),
+CREATE TABLE IF NOT EXISTS transaction_lines_history (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
 
-    FOREIGN KEY (created_by) REFERENCES users(id),
-    FOREIGN KEY (updated_by) REFERENCES users(id),
-    FOREIGN KEY (deleted_by) REFERENCES users(id)
+    transaction_line_id INTEGER REFERENCES transaction_lines(id),
+
+    transaction_id      INTEGER NOT NULL,
+    account_id          INTEGER NOT NULL,
+    amount_cents        INTEGER NOT NULL CHECK (amount_cents >= 0),
+    is_debit            INTEGER NOT NULL,
+
+    updated_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by  INTEGER REFERENCES users(id)
 );
 
 
@@ -276,6 +265,54 @@ BEGIN
         CURRENT_TIMESTAMP,
         NEW.updated_by
     );
+END;
+
+CREATE TRIGGER trg_accounting_transactions_audit_update
+BEFORE UPDATE ON accounting_transactions
+FOR EACH ROW
+BEGIN
+    INSERT INTO accounting_transactions_history (
+        transaction_id,
+        transaction_date,
+        posting_reference,
+        updated_at,
+        updated_by
+    )
+    VALUES (
+        OLD.id,
+        OLD.transaction_date,
+        OLD.posting_reference,
+        CURRENT_TIMESTAMP,
+        NEW.updated_by
+    );
+END;
+
+CREATE TRIGGER trg_transaction_lines_audi_update
+BEFORE UPDATE ON transaction_lines
+FOR EACH ROW
+BEGIN
+    INSERT INTO transaction_lines_history (
+        transaction_line_id,
+        transaction_id, 
+        account_id,
+        amount_cents,
+        is_debit,
+        updated_at,
+        updated_by
+    )
+    VALUES (
+        OLD.id,
+        OLD.transaction_id,
+        OLD.account_id,
+        OLD.amount_cents,
+        OLD.is_debit,
+        CURRENT_TIMESTAMP,
+        NEW.updated_by
+    );
+END;
+
+
+
 
 ------ Indexing ------
 
@@ -287,28 +324,3 @@ CREATE INDEX IF NOT EXISTS idx_transactions_date
 
 CREATE INDEX IF NOT EXISTS idx_lines_transaction
     ON transaction_lines(transaction_id) WHERE deleted_at IS NULL;
-"""
-
-
-def create_connection(db_path: str | Path = "accounting.db") -> sqlite3.Connection:
-    """Create a configured SQLite connection and ensure schema exists."""
-    conn = sqlite3.connect(db_path, detect_types=sqlite3.PARSE_DECLTYPES)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    schema = SCHEMA_FILE_PATH.read_text(encoding="utf-8")
-    conn.executescript(schema)
-    return conn
-
-
-@contextmanager
-def get_connection(db_path: str | Path = "accounting.db") -> Iterator[sqlite3.Connection]:
-    """Context manager that yields a connection and commits/rollbacks automatically."""
-    conn = create_connection(db_path)
-    try:
-        yield conn
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()

@@ -257,5 +257,477 @@ class TestDatabaseAccountOperation(unittest.TestCase):
         self.assertEqual(account[6], 1)
 
 
+class TestDatabaseAccountingTransaction(unittest.TestCase):
+    conn: Connection
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.conn = create_connection(":memory:")
+
+        users = [
+            ("asmith", "Alice", "Smith", "asmith@example.com"),
+            ("bbarker", "Bob", "Barker", "bbarker@website.com"),
+        ]
+
+        sql = """
+            INSERT INTO users
+                (username, first_name, last_name, email)
+            VALUES
+                (?, ?, ?, ?)
+        """
+        cls.conn.executemany(sql, users)
+
+        business = ("Alice INC.", "12-3456789", "2026-08-08", 7, 1)
+
+        sql = """
+            INSERT INTO businesses
+                (title, tax_id, established, tax_year_end_month, created_by)
+            VALUES
+                (?, ?, ?, ?, ?)
+        """
+        cls.conn.execute(sql, business)
+        cls.conn.commit()
+
+    def test_transaction_creation(self) -> None:
+        transaction = ("2026-08-08", "Owner contributed cash to business", "GJ1", 1)
+
+        sql = """
+            INSERT INTO accounting_transactions
+                (transaction_date, description, posting_reference, created_by)
+            VALUES
+                (?, ?, ?, ?)
+        """
+        self.conn.execute(sql, transaction)
+
+        sql = "SELECT * FROM accounting_transactions;"
+        transaction = self.conn.execute(sql).fetchone()
+
+        self.assertIsNotNone(transaction)
+        self.assertEqual(transaction[0], 1)
+        self.assertEqual(transaction[1], "2026-08-08")
+        self.assertEqual(transaction[2], "Owner contributed cash to business")
+        self.assertEqual(transaction[3], "GJ1")
+        self.assertIsNotNone(transaction[4])
+        self.assertEqual(transaction[5], 1)
+        self.assertIsNotNone(transaction[6])
+        self.assertIsNone(transaction[7])
+        self.assertIsNone(transaction[8])
+        self.assertIsNone(transaction[9])
+
+    def test_transaction_without_posting_reference(self) -> None:
+        transaction = ("2026-08-09", "Purchased office supplies", None, 1)
+
+        sql = """
+            INSERT INTO accounting_transactions
+                (transaction_date, description, posting_reference, created_by)
+            VALUES
+                (?, ?, ?, ?)
+        """
+        self.conn.execute(sql, transaction)
+
+        sql = """
+            SELECT *
+            FROM accounting_transactions
+            WHERE transaction_date = ?;
+        """
+        transaction = self.conn.execute(sql, ("2026-08-09",)).fetchone()
+
+        self.assertIsNotNone(transaction)
+        self.assertEqual(transaction[1], "2026-08-09")
+        self.assertEqual(transaction[2], "Purchased office supplies")
+        self.assertIsNone(transaction[3])
+
+    def test_transaction_updated_at(self) -> None:
+        transaction = ("2026-08-10", "Purchased equipment", None, 1)
+
+        sql = """
+            INSERT INTO accounting_transactions
+                (transaction_date, description, posting_reference, created_by)
+            VALUES
+                (?, ?, ?, ?)
+        """
+        cursor = self.conn.execute(sql, transaction)
+        transaction_id = cursor.lastrowid
+
+        time.sleep(1)
+
+        sql = """
+            UPDATE accounting_transactions
+            SET
+                description = ?,
+                updated_by = ?
+            WHERE id = ?;
+        """
+        self.conn.execute(sql, ("Purchased shop equipment", 2, transaction_id))
+
+        sql = """
+            SELECT *
+            FROM accounting_transactions
+            WHERE id = ?;
+        """
+        transaction = self.conn.execute(sql, (transaction_id,)).fetchone()
+
+        self.assertIsNotNone(transaction)
+        self.assertEqual(transaction[2], "Purchased shop equipment")
+        self.assertEqual(transaction[7], 2)
+        self.assertNotEqual(transaction[4], transaction[6])
+
+    def test_transaction_deleted(self) -> None:
+        transaction = ("2026-08-11", "Transaction to delete", None, 1)
+
+        sql = """
+            INSERT INTO accounting_transactions
+                (transaction_date, description, posting_reference, created_by)
+            VALUES
+                (?, ?, ?, ?)
+        """
+        cursor = self.conn.execute(sql, transaction)
+        transaction_id = cursor.lastrowid
+
+        sql = """
+            UPDATE accounting_transactions
+            SET
+                deleted_at = CURRENT_TIMESTAMP,
+                deleted_by = ?
+            WHERE id = ?;
+        """
+        self.conn.execute(sql, (1, transaction_id))
+
+        sql = """
+            SELECT *
+            FROM accounting_transactions
+            WHERE id = ?;
+        """
+        transaction = self.conn.execute(sql, (transaction_id,)).fetchone()
+
+        self.assertIsNotNone(transaction)
+        self.assertIsNotNone(transaction[-2])
+        self.assertEqual(transaction[-1], 1)
+
+
+class TestDatabaseTransactionLine(unittest.TestCase):
+    conn: Connection
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.conn = create_connection(":memory:")
+
+        users = [
+            ("asmith", "Alice", "Smith", "asmith@example.com"),
+            ("bbarker", "Bob", "Barker", "bbarker@website.com"),
+        ]
+
+        sql = """
+            INSERT INTO users
+                (username, first_name, last_name, email)
+            VALUES
+                (?, ?, ?, ?)
+        """
+        cls.conn.executemany(sql, users)
+
+        business = ("Alice INC.", "12-3456789", "2026-08-08", 7, 1)
+
+        sql = """
+            INSERT INTO businesses
+                (title, tax_id, established, tax_year_end_month, created_by)
+            VALUES
+                (?, ?, ?, ?, ?)
+        """
+        cls.conn.execute(sql, business)
+
+        accounts = [
+            (1, 110, "Cash", "Asset", "Cash", 1),
+            (1, 310, "Owner Capital", "Equity", "Owner contributions", 1),
+        ]
+
+        sql = """
+            INSERT INTO accounts
+                (business_id, account_number, account_name, account_type, description, created_by)
+            VALUES
+                (?, ?, ?, ?, ?, ?)
+        """
+        cls.conn.executemany(sql, accounts)
+
+        transaction = ("2026-08-08", "Owner contributed $1,000 cash", "GJ1", 1)
+
+        sql = """
+            INSERT INTO accounting_transactions
+                (transaction_date, description, posting_reference, created_by)
+            VALUES
+                (?, ?, ?, ?)
+        """
+        cls.conn.execute(sql, transaction)
+        cls.conn.commit()
+
+    def test_transaction_line_creation(self) -> None:
+        line = (1, 1, 100000, 1, 1)
+
+        sql = """
+            INSERT INTO transaction_lines
+                (transaction_id, account_id, amount_cents, is_debit, created_by)
+            VALUES
+                (?, ?, ?, ?, ?)
+        """
+        self.conn.execute(sql, line)
+
+        sql = "SELECT * FROM transaction_lines;"
+        transaction_line = self.conn.execute(sql).fetchone()
+
+        self.assertIsNotNone(transaction_line)
+        self.assertEqual(transaction_line[0], 1)
+        self.assertEqual(transaction_line[1], 1)
+        self.assertEqual(transaction_line[2], 1)
+        self.assertEqual(transaction_line[3], 100000)
+        self.assertEqual(transaction_line[4], 1)
+        self.assertIsNotNone(transaction_line[5])
+        self.assertEqual(transaction_line[6], 1)
+        self.assertIsNotNone(transaction_line[7])
+        self.assertIsNone(transaction_line[8])
+        self.assertIsNone(transaction_line[9])
+        self.assertIsNone(transaction_line[10])
+
+    def test_transaction_debit_and_credit_lines(self) -> None:
+        lines = [
+            (1, 1, 100000, 1, 1),
+            (1, 2, 100000, 0, 1),
+        ]
+
+        sql = """
+            INSERT INTO transaction_lines
+                (transaction_id, account_id, amount_cents, is_debit, created_by)
+            VALUES
+                (?, ?, ?, ?, ?)
+        """
+        self.conn.executemany(sql, lines)
+
+        sql = """
+            SELECT *
+            FROM transaction_lines
+            WHERE transaction_id = ?;
+        """
+        lines = self.conn.execute(sql, (1,)).fetchall()
+
+        self.assertEqual(len(lines), 2)
+
+        debit = lines[0]
+        credit = lines[1]
+
+        self.assertEqual(debit[2], 1)
+        self.assertEqual(debit[3], 100000)
+        self.assertEqual(debit[4], 1)
+
+        self.assertEqual(credit[2], 2)
+        self.assertEqual(credit[3], 100000)
+        self.assertEqual(credit[4], 0)
+
+    def test_transaction_line_negative_amount(self) -> None:
+        line = (1, 1, -100000, 1, 1)
+
+        sql = """
+            INSERT INTO transaction_lines
+                (transaction_id, account_id, amount_cents, is_debit, created_by)
+            VALUES
+                (?, ?, ?, ?, ?)
+        """
+
+        with self.assertRaises(IntegrityError):
+            self.conn.execute(sql, line)
+
+    def test_transaction_line_invalid_transaction(self) -> None:
+        line = (999, 1, 100000, 1, 1)
+
+        sql = """
+            INSERT INTO transaction_lines
+                (transaction_id, account_id, amount_cents, is_debit, created_by)
+            VALUES
+                (?, ?, ?, ?, ?)
+        """
+
+        with self.assertRaises(IntegrityError):
+            self.conn.execute(sql, line)
+
+    def test_transaction_line_invalid_account(self) -> None:
+        line = (1, 999, 100000, 1, 1)
+
+        sql = """
+            INSERT INTO transaction_lines
+                (transaction_id, account_id, amount_cents, is_debit, created_by)
+            VALUES
+                (?, ?, ?, ?, ?)
+        """
+
+        with self.assertRaises(IntegrityError):
+            self.conn.execute(sql, line)
+
+    def test_transaction_line_updated_at(self) -> None:
+        line = (1, 1, 50000, 1, 1)
+
+        sql = """
+            INSERT INTO transaction_lines
+                (transaction_id, account_id, amount_cents, is_debit, created_by)
+            VALUES
+                (?, ?, ?, ?, ?)
+        """
+        cursor = self.conn.execute(sql, line)
+        line_id = cursor.lastrowid
+
+        time.sleep(1)
+
+        sql = """
+            UPDATE transaction_lines
+            SET
+                amount_cents = ?,
+                updated_by = ?
+            WHERE id = ?;
+        """
+        self.conn.execute(sql, (75000, 2, line_id))
+
+        sql = """
+            SELECT *
+            FROM transaction_lines
+            WHERE id = ?;
+        """
+        line = self.conn.execute(sql, (line_id,)).fetchone()
+
+        self.assertIsNotNone(line)
+        self.assertEqual(line[3], 75000)
+        self.assertEqual(line[8], 2)
+        self.assertNotEqual(line[5], line[7])
+
+    def test_transaction_line_deleted(self) -> None:
+        line = (1, 1, 25000, 1, 1)
+
+        sql = """
+            INSERT INTO transaction_lines
+                (transaction_id, account_id, amount_cents, is_debit, created_by)
+            VALUES
+                (?, ?, ?, ?, ?)
+        """
+        cursor = self.conn.execute(sql, line)
+        line_id = cursor.lastrowid
+
+        sql = """
+            UPDATE transaction_lines
+            SET
+                deleted_at = CURRENT_TIMESTAMP,
+                deleted_by = ?
+            WHERE id = ?;
+        """
+        self.conn.execute(sql, (1, line_id))
+
+        sql = """
+            SELECT *
+            FROM transaction_lines
+            WHERE id = ?;
+        """
+        line = self.conn.execute(sql, (line_id,)).fetchone()
+
+        self.assertIsNotNone(line)
+        self.assertIsNotNone(line[-2])
+        self.assertEqual(line[-1], 1)
+
+
+class TestDatabaseAccountsHistory(unittest.TestCase):
+    conn: Connection
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.conn = create_connection(":memory:")
+
+        users = [
+            ("asmith", "Alice", "Smith", "asmith@example.com"),
+            ("bbarker", "Bob", "Barker", "bbarker@website.com"),
+        ]
+
+        sql = """
+            INSERT INTO users
+                (username, first_name, last_name, email)
+            VALUES
+                (?, ?, ?, ?)
+        """
+        cls.conn.executemany(sql, users)
+
+        business = ("Alice INC.", "12-3456789", "2026-08-08", 7, 1)
+
+        sql = """
+            INSERT INTO businesses
+                (title, tax_id, established, tax_year_end_month, created_by)
+            VALUES
+                (?, ?, ?, ?, ?)
+        """
+        cls.conn.execute(sql, business)
+
+        accounts = [
+            (1, 110, "Cash", "Asset", "Cash", 1),
+            (1, 310, "Owner Capital", "Equity", "Owner contributions", 1),
+        ]
+
+        sql = """
+            INSERT INTO accounts
+                (business_id, account_number, account_name, account_type, description, created_by)
+            VALUES
+                (?, ?, ?, ?, ?, ?)
+        """
+        cls.conn.executemany(sql, accounts)
+
+        transaction = ("2026-08-08", "Owner contributed $1,000 cash", "GJ1", 1)
+
+        sql = """
+            INSERT INTO accounting_transactions
+                (transaction_date, description, posting_reference, created_by)
+            VALUES
+                (?, ?, ?, ?)
+        """
+        cls.conn.execute(sql, transaction)
+
+        transaction_lines = [(1, 1, 1_000_00, 1, 1), (1, 2, 1_000_00, 0, 1)]
+        sql = """
+            INSERT INTO transaction_lines
+                (transaction_id, account_id, amount_cents, is_debit, created_by)
+            VALUES
+                (?, ?, ?, ?, ?);
+        """
+        cls.conn.executemany(sql, transaction_lines)
+        cls.conn.commit()
+
+    def test_accounts_history(self):
+        update_lines = [(100_00, 1, 1), (100_00, 1, 2)]
+        sql = """
+            UPDATE transaction_lines
+            SET amount_cents = ?, updated_by = ?
+            WHERE id = ?;
+        """
+        self.conn.executemany(sql, update_lines)
+
+        sql = """
+            SELECT
+                tlh.id,
+                tl.id,
+                at.description,
+                a.account_name,
+                tlh.amount_cents,
+                u.username
+            FROM transaction_lines_history tlh
+            JOIN transaction_lines tl
+                ON tl.id = tlh.transaction_line_id
+            JOIN accounting_transactions at
+                ON at.id = tlh.transaction_id
+            JOIN accounts a
+                ON a.id = tlh.account_id
+            JOIN users u
+                ON u.id = tlh.updated_by"""
+        results = self.conn.execute(sql).fetchall()
+
+        print("\n")
+        for result in results:
+            print(f"id:                  {result[0]}")
+            print(f"transaction_line_id: {result[1]}")
+            print(f"transaction desc:    {result[2]}")
+            print(f"account name:        {result[3]}")
+            print(f"amount:              ${result[4] / 100:.2f}")
+            print(f"updated by:          {result[5]}")
+            print()
+
+
 if __name__ == "__main__":
     unittest.main()
