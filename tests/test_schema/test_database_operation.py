@@ -1,3 +1,4 @@
+# test_database_operation.py
 import time
 import unittest
 from sqlite3 import IntegrityError, Connection
@@ -627,6 +628,74 @@ class TestDatabaseTransactionLine(unittest.TestCase):
         self.assertEqual(line[-1], 1)
 
 
+class TestDatabaseDocumentsOperation(unittest.TestCase):
+    conn: Connection
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.conn = create_connection(":memory:")
+
+        users = [
+            ("asmith", "Alice", "Smith", "asmith@example.com"),
+            ("bbarker", "Bob", "Barker", "bbarker@website.com"),
+        ]
+
+        sql = """
+            INSERT INTO users
+                (username, first_name, last_name, email)
+            VALUES
+                (?, ?, ?, ?)
+        """
+        cls.conn.executemany(sql, users)
+
+        business = ("Alice INC.", "12-3456789", "2026-08-08", 7, 1)
+
+        sql = """
+            INSERT INTO businesses
+                (title, tax_id, established, tax_year_end_month, created_by)
+            VALUES
+                (?, ?, ?, ?, ?)
+        """
+        cls.conn.execute(sql, business)
+
+        accounts = [
+            (1, 110, "Cash", "Asset", "Cash", 1),
+            (1, 310, "Owner Capital", "Equity", "Owner contributions", 1),
+        ]
+
+        sql = """
+            INSERT INTO accounts
+                (business_id, account_number, account_name, account_type, description, created_by)
+            VALUES
+                (?, ?, ?, ?, ?, ?)
+        """
+        cls.conn.executemany(sql, accounts)
+
+        transaction = ("2026-08-08", "Owner contributed $1,000 cash", "GJ1", 1)
+
+        sql = """
+            INSERT INTO accounting_transactions
+                (transaction_date, description, posting_reference, created_by)
+            VALUES
+                (?, ?, ?, ?)
+        """
+        cls.conn.execute(sql, transaction)
+
+        lines = [
+            (1, 1, 100000, 1, 1),
+            (1, 2, 100000, 0, 1),
+        ]
+
+        sql = """
+            INSERT INTO transaction_lines
+                (transaction_id, account_id, amount_cents, is_debit, created_by)
+            VALUES
+                (?, ?, ?, ?, ?)
+        """
+        cls.conn.executemany(sql, lines)
+        cls.conn.commit()
+
+
 class TestDatabaseAccountsHistory(unittest.TestCase):
     conn: Connection
 
@@ -716,17 +785,7 @@ class TestDatabaseAccountsHistory(unittest.TestCase):
                 ON a.id = tlh.account_id
             JOIN users u
                 ON u.id = tlh.updated_by"""
-        results = self.conn.execute(sql).fetchall()
-
-        print("\n")
-        for result in results:
-            print(f"id:                  {result[0]}")
-            print(f"transaction_line_id: {result[1]}")
-            print(f"transaction desc:    {result[2]}")
-            print(f"account name:        {result[3]}")
-            print(f"amount:              ${result[4] / 100:.2f}")
-            print(f"updated by:          {result[5]}")
-            print()
+        _ = self.conn.execute(sql).fetchall()
 
 
 if __name__ == "__main__":
