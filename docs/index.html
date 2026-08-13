@@ -12,9 +12,15 @@
 
     <!-- Configuration -->
     <script>
-      window.$docsify = {
-        //...
-      };
+    window.$docsify = {
+        name: 'My Project',
+        repo: 'https://github.com/yourusername/your-repo',
+        loadSidebar: true,
+        coverpage: true,        // ← enable the cover page
+        // or: coverpage: '_coverpage.md',
+        onlyCover: false,       // false = show cover + allow navigation into the site
+        // onlyCover: true,     // true = only show the cover page (no sidebar until clicked)
+    }
     </script>
 
     <!-- Docsify.js -->
