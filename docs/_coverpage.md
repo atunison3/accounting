@@ -2,7 +2,7 @@
 
 ![logo](_media/icon.svg)
 
-# Andy's Accounting
+# docsify
 
 > A magical documentation site generator
 
