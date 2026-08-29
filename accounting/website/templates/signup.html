@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="auth-panel">
+    <p class="eyebrow">NEW USER</p>
+    <h1>Create a user.</h1>
+    <p class="lead">Add a person who can be associated with accounting records.</p>
+    {% if error %}<div class="form-error" role="alert">{{ error }}</div>{% endif %}
+    <form method="post" action="{{ url_for('create_user_form') }}" class="login-form">
+        <label for="first-name">First name</label>
+        <input id="first-name" name="first_name" autocomplete="given-name" required>
+        <label for="last-name">Last name</label>
+        <input id="last-name" name="last_name" autocomplete="family-name" required>
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="email" required>
+        <button class="button primary" type="submit">Create user</button>
+    </form>
+</section>
+{% endblock %}

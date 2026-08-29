@@ -3,12 +3,58 @@
 <section class="page-heading">
     <p class="eyebrow">WORKSPACE</p>
     <h1>Accounting dashboard</h1>
-    <p class="lead">Choose an area to continue. Use the API documentation for creating and managing records.</p>
+    <p class="lead">Add the records that make up your books. All amounts are entered in cents.</p>
 </section>
-<section class="dashboard-grid">
-    <a class="dashboard-card" href="/docs#/businesses/create_business_businesses_post"><h2>Businesses</h2><p>Create a business or browse existing businesses.</p><span>Open API →</span></a>
-    <a class="dashboard-card" href="/docs#/accounts/create_account_accounts_post"><h2>Chart of accounts</h2><p>Add accounts and view accounts belonging to a business.</p><span>Open API →</span></a>
-    <a class="dashboard-card" href="/docs#/transactions/create_transaction_transactions_post"><h2>General journal</h2><p>Post balanced transactions and inspect their lines.</p><span>Open API →</span></a>
+{% if message %}<div class="notice success" role="status">{{ message }}</div>{% endif %}
+{% if error %}<div class="notice error" role="alert">{{ error }}</div>{% endif %}
+<section class="form-grid">
+    <article class="form-card">
+        <h2>Add a business</h2>
+        <p class="muted">Create the reporting context for your accounts.</p>
+        <form method="post" action="{{ url_for('create_business_form') }}">
+            <label for="business-title">Business name</label>
+            <input id="business-title" name="title" required>
+            <label for="business-tax-id">Tax ID <span>(optional)</span></label>
+            <input id="business-tax-id" name="tax_id" placeholder="12-3456789">
+            <label for="business-user">Created by user ID</label>
+            <input id="business-user" name="created_by" type="number" min="1" required>
+            <button class="button primary" type="submit">Add business</button>
+        </form>
+    </article>
+    <article class="form-card">
+        <h2>Add an account</h2>
+        <p class="muted">Add an account to a business chart of accounts.</p>
+        <form method="post" action="{{ url_for('create_account_form') }}">
+            <label for="account-business">Business ID</label>
+            <input id="account-business" name="business_id" type="number" min="1" required>
+            <label for="account-number">Account number</label>
+            <input id="account-number" name="account_number" type="number" min="1" required>
+            <label for="account-name">Account name</label>
+            <input id="account-name" name="account_name" required>
+            <label for="account-type">Account type</label>
+            <select id="account-type" name="account_type">
+                <option>Asset</option><option>Contra-asset</option><option>Liability</option>
+                <option>Equity</option><option>Revenue</option><option>Expense</option>
+            </select>
+            <label for="account-user">Created by user ID</label>
+            <input id="account-user" name="created_by" type="number" min="1" required>
+            <label class="checkbox"><input name="is_debit" type="checkbox"> Normal balance is debit</label>
+            <button class="button primary" type="submit">Add account</button>
+        </form>
+    </article>
+    <article class="form-card wide">
+        <h2>Post a transaction</h2>
+        <p class="muted">A simple two-line journal entry. Debits and credits must match.</p>
+        <form method="post" action="{{ url_for('create_transaction_form') }}" class="transaction-form">
+            <div><label for="transaction-date">Date</label><input id="transaction-date" name="transaction_date" type="date" required></div>
+            <div><label for="transaction-user">User ID</label><input id="transaction-user" name="user_id" type="number" min="1" required></div>
+            <div class="full"><label for="transaction-description">Description</label><input id="transaction-description" name="description" required></div>
+            <div><label for="debit-account">Debit account ID</label><input id="debit-account" name="debit_account_id" type="number" min="1" required></div>
+            <div><label for="credit-account">Credit account ID</label><input id="credit-account" name="credit_account_id" type="number" min="1" required></div>
+            <div><label for="transaction-amount">Amount (cents)</label><input id="transaction-amount" name="amount_cents" type="number" min="0" required></div>
+            <div><label for="posting-reference">Posting reference <span>(optional)</span></label><input id="posting-reference" name="posting_reference"></div>
+            <div class="full"><button class="button primary" type="submit">Post transaction</button></div>
+        </form>
+    </article>
 </section>
-<div class="notice"><strong>Tip:</strong> Amounts are entered as integer cents, and every transaction needs matching debits and credits.</div>
 {% endblock %}
