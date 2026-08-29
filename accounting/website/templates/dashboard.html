@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-heading">
+    <p class="eyebrow">WORKSPACE</p>
+    <h1>Accounting dashboard</h1>
+    <p class="lead">Choose an area to continue. Use the API documentation for creating and managing records.</p>
+</section>
+<section class="dashboard-grid">
+    <a class="dashboard-card" href="/docs#/businesses/create_business_businesses_post"><h2>Businesses</h2><p>Create a business or browse existing businesses.</p><span>Open API →</span></a>
+    <a class="dashboard-card" href="/docs#/accounts/create_account_accounts_post"><h2>Chart of accounts</h2><p>Add accounts and view accounts belonging to a business.</p><span>Open API →</span></a>
+    <a class="dashboard-card" href="/docs#/transactions/create_transaction_transactions_post"><h2>General journal</h2><p>Post balanced transactions and inspect their lines.</p><span>Open API →</span></a>
+</section>
+<div class="notice"><strong>Tip:</strong> Amounts are entered as integer cents, and every transaction needs matching debits and credits.</div>
+{% endblock %}

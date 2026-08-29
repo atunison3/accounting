@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+    <p class="eyebrow">COLLEGE ACCOUNTING</p>
+    <h1>Keep every entry balanced.</h1>
+    <p class="lead">A focused workspace for businesses, chart-of-accounts data, and double-entry transactions.</p>
+    <div class="actions">
+        <a class="button primary" href="{{ url_for('dashboard') }}">Open dashboard</a>
+        <a class="button secondary" href="{{ url_for('dashboard') }}">View dashboard</a>
+    </div>
+</section>
+<section class="cards">
+    <article class="card"><span class="card-icon">01</span><h2>Businesses</h2><p>Manage the businesses and reporting context behind your accounting records.</p></article>
+    <article class="card"><span class="card-icon">02</span><h2>Accounts</h2><p>Organize assets, liabilities, equity, revenue, and expense accounts.</p></article>
+    <article class="card"><span class="card-icon">03</span><h2>Transactions</h2><p>Create entries with debit and credit totals validated before persistence.</p></article>
+</section>
+{% endblock %}
