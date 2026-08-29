@@ -1,14 +1,7 @@
-<!-- _coverpage.md -->
+# accounting
 
-![logo](_media/icon.svg)
+> Python domain models and application services for a small accounting system.
 
-# docsify
+[Get Started](README.md)
 
-> A magical documentation site generator
-
-- Simple and lightweight
-- No statically built HTML files
-- Multiple themes
-
-[GitHub](https://github.com/docsifyjs/docsify/)
-[Get Started](#docsify)
+[Package Documentation](documentation/README.md)
