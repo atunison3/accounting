@@ -339,7 +339,6 @@ class SqliteTransactionRepository(TransactionRepository):
         lines: list[TransactionLine],
         user_id: int,
     ) -> int:
-        now = _utcnow()
         cur = self._conn.cursor()
 
         # Insert header
@@ -348,16 +347,13 @@ class SqliteTransactionRepository(TransactionRepository):
             """
             INSERT INTO accounting_transactions (
                 transaction_date, description, posting_reference,
-                created_at, created_by, updated_at, updated_by
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                created_by
+            ) VALUES (?, ?, ?, ?)
             """,
             (
                 transaction.transaction_date.isoformat(),
                 transaction.description,
                 transaction.posting_reference,
-                now,
-                user_id,
-                now,
                 user_id,
             ),
         )
@@ -372,17 +368,14 @@ class SqliteTransactionRepository(TransactionRepository):
                 """
                 INSERT INTO transaction_lines (
                     transaction_id, account_id, amount_cents, is_debit,
-                    created_at, created_by, updated_at, updated_by
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    created_by
+                ) VALUES (?, ?, ?, ?, ?)
                 """,
                 (
                     transaction_id,
                     line.account_id,
                     line.amount_cents,
                     _bool_to_int(line.is_debit),
-                    now,
-                    user_id,
-                    now,
                     user_id,
                 ),
             )
