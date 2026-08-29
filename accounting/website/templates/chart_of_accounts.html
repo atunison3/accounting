@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-heading">
+    <p class="eyebrow">ACCOUNTING RECORDS</p>
+    <h1>Chart of accounts</h1>
+    <p class="lead">Select a business to view and print its active ledger accounts.</p>
+</section>
+<section class="selector-card">
+    <form method="get" action="{{ url_for('chart_of_accounts') }}" class="business-selector">
+        <label for="business-id">Choose a business</label>
+        <select id="business-id" name="business_id" required>
+            <option value="">Select a business</option>
+            {% for business in businesses %}
+            <option value="{{ business.id }}" {% if business.id == selected_business_id %}selected{% endif %}>{{ business.title }} ({{ business.id }})</option>
+            {% endfor %}
+        </select>
+        <button class="button primary" type="submit">View accounts</button>
+    </form>
+</section>
+{% if selected_business_id is not none %}
+<section class="table-card chart-paper">
+    <div class="chart-title">
+        <h2>{{ selected_business.title }}</h2>
+        <h3>Chart of Accounts</h3>
+    </div>
+    <div class="chart-actions"><a class="button secondary" href="{{ url_for('chart_of_accounts_pdf') }}?business_id={{ selected_business_id }}">Download PDF</a><button class="button secondary" type="button" onclick="window.print()">Print</button></div>
+    {% if accounts %}
+    <div class="table-wrap"><table class="chart-table">
+        <thead><tr><th>Account No.</th><th>Name of Account</th></tr></thead>
+        <tbody>{% for account_type, grouped_accounts in account_groups %}{% if grouped_accounts %}
+        <tr class="category-row"><th colspan="2">{{ account_type }}</th></tr>
+        {% for account in grouped_accounts %}<tr><td class="number">{{ account.account_number }}</td><td>{{ account.account_name }}</td></tr>{% endfor %}
+        {% endif %}{% endfor %}</tbody>
+    </table></div>
+    {% else %}<p class="empty">No active accounts have been added for this business yet.</p>{% endif %}
+</section>
+{% endif %}
+{% endblock %}

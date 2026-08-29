@@ -1,6 +1,7 @@
 # accounting/infrastructure/sqlite/repositories.py
 from __future__ import annotations
 
+import logging
 import sqlite3
 from datetime import datetime, timezone
 
@@ -30,6 +31,18 @@ def _bool_to_int(value: bool) -> int:
 
 def _int_to_bool(value: int | None) -> bool:
     return bool(value)
+
+
+LOGGER = logging.getLogger("accounting.api.sqlite")
+
+
+def _execute(cursor: sqlite3.Cursor, sql: str, parameters: tuple = ()) -> sqlite3.Cursor:
+    """Execute SQL and log the statement and parameters when it fails."""
+    try:
+        return cursor.execute(sql, parameters)
+    except Exception:
+        LOGGER.exception("SQLite execute failed sql=%s parameters=%r", sql.strip(), parameters)
+        raise
 
 
 # ---------------------------------------------------------------------------
@@ -133,7 +146,8 @@ class SqliteUserRepository(UserRepository):
     def add(self, user: User) -> int:
         now = _utcnow()
         cur = self._conn.cursor()
-        cur.execute(
+        _execute(
+            cur,
             """
             INSERT INTO users (
                 username, first_name, last_name, email, is_active,
@@ -157,7 +171,8 @@ class SqliteUserRepository(UserRepository):
 
     def get_by_id(self, user_id: int) -> User | None:
         cur = self._conn.cursor()
-        cur.execute(
+        _execute(
+            cur,
             "SELECT * FROM users WHERE id = ? AND deleted_at IS NULL",
             (user_id,),
         )
@@ -166,7 +181,8 @@ class SqliteUserRepository(UserRepository):
 
     def get_by_username(self, username: str) -> User | None:
         cur = self._conn.cursor()
-        cur.execute(
+        _execute(
+            cur,
             "SELECT * FROM users WHERE username = ? AND deleted_at IS NULL",
             (username,),
         )
@@ -179,24 +195,20 @@ class SqliteBusinessRepository(BusinessRepository):
         self._conn = conn
 
     def add(self, business: Business) -> int:
-        now = _utcnow()
         cur = self._conn.cursor()
-        cur.execute(
+        _execute(
+            cur,
             """
             INSERT INTO businesses (
-                title, tax_id, is_business_active, established,
-                created_at, created_by, updated_at, updated_by
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                title, tax_id, is_business_active, established, created_by
+            ) VALUES (?, ?, ?, ?, ?)
             """,
             (
                 business.title,
                 business.tax_id,
                 _bool_to_int(business.is_business_active),
                 business.established,
-                now,
                 business.created_by,
-                now,
-                business.updated_by or business.created_by,
             ),
         )
         last_row_id = cur.lastrowid
@@ -206,7 +218,8 @@ class SqliteBusinessRepository(BusinessRepository):
 
     def get_by_id(self, business_id: int) -> Business | None:
         cur = self._conn.cursor()
-        cur.execute(
+        _execute(
+            cur,
             "SELECT * FROM businesses WHERE id = ? AND deleted_at IS NULL",
             (business_id,),
         )
@@ -215,7 +228,7 @@ class SqliteBusinessRepository(BusinessRepository):
 
     def get_all(self) -> list[Business]:
         cur = self._conn.cursor()
-        cur.execute("SELECT * FROM businesses WHERE deleted_at IS NULL ORDER BY title")
+        _execute(cur, "SELECT * FROM businesses WHERE deleted_at IS NULL ORDER BY title")
         return [_row_to_business(row) for row in cur.fetchall()]
 
 
@@ -226,7 +239,8 @@ class SqliteAccountRepository(AccountRepository):
     def add(self, account: Account) -> int:
         now = _utcnow()
         cur = self._conn.cursor()
-        cur.execute(
+        _execute(
+            cur,
             """
             INSERT INTO accounts (
                 business_id, account_number, account_name, account_type,
@@ -255,7 +269,8 @@ class SqliteAccountRepository(AccountRepository):
 
     def get_by_id(self, account_id: int) -> Account | None:
         cur = self._conn.cursor()
-        cur.execute(
+        _execute(
+            cur,
             "SELECT * FROM accounts WHERE id = ? AND deleted_at IS NULL",
             (account_id,),
         )
@@ -264,7 +279,8 @@ class SqliteAccountRepository(AccountRepository):
 
     def get_by_number(self, business_id: int, account_number: int) -> Account | None:
         cur = self._conn.cursor()
-        cur.execute(
+        _execute(
+            cur,
             """
             SELECT * FROM accounts
             WHERE business_id = ? AND account_number = ? AND deleted_at IS NULL
@@ -276,7 +292,8 @@ class SqliteAccountRepository(AccountRepository):
 
     def get_for_business(self, business_id: int) -> list[Account]:
         cur = self._conn.cursor()
-        cur.execute(
+        _execute(
+            cur,
             """
             SELECT * FROM accounts
             WHERE business_id = ? AND deleted_at IS NULL
@@ -285,6 +302,31 @@ class SqliteAccountRepository(AccountRepository):
             (business_id,),
         )
         return [_row_to_account(row) for row in cur.fetchall()]
+
+    def update(self, account_id: int, account: Account, user_id: int) -> None:
+        now = _utcnow()
+        cur = self._conn.cursor()
+        _execute(
+            cur,
+            """
+            UPDATE accounts
+            SET account_number = ?, account_name = ?, account_type = ?,
+                description = ?, is_account_active = ?, is_debit = ?,
+                updated_at = ?, updated_by = ?
+            WHERE id = ? AND deleted_at IS NULL
+            """,
+            (
+                account.account_number,
+                account.account_name,
+                account.account_type.value,
+                account.description,
+                _bool_to_int(account.is_account_active),
+                _bool_to_int(account.is_debit),
+                now,
+                user_id,
+                account_id,
+            ),
+        )
 
 
 class SqliteTransactionRepository(TransactionRepository):
@@ -301,7 +343,8 @@ class SqliteTransactionRepository(TransactionRepository):
         cur = self._conn.cursor()
 
         # Insert header
-        cur.execute(
+        _execute(
+            cur,
             """
             INSERT INTO accounting_transactions (
                 transaction_date, description, posting_reference,
@@ -324,7 +367,8 @@ class SqliteTransactionRepository(TransactionRepository):
 
         # Insert lines
         for line in lines:
-            cur.execute(
+            _execute(
+                cur,
                 """
                 INSERT INTO transaction_lines (
                     transaction_id, account_id, amount_cents, is_debit,
@@ -349,7 +393,8 @@ class SqliteTransactionRepository(TransactionRepository):
 
     def get_by_id(self, transaction_id: int) -> AccountingTransaction | None:
         cur = self._conn.cursor()
-        cur.execute(
+        _execute(
+            cur,
             "SELECT * FROM accounting_transactions WHERE id = ? AND deleted_at IS NULL",
             (transaction_id,),
         )
@@ -358,7 +403,8 @@ class SqliteTransactionRepository(TransactionRepository):
 
     def get_lines(self, transaction_id: int) -> list[TransactionLine]:
         cur = self._conn.cursor()
-        cur.execute(
+        _execute(
+            cur,
             """
             SELECT * FROM transaction_lines
             WHERE transaction_id = ? AND deleted_at IS NULL
@@ -373,7 +419,8 @@ class SqliteTransactionRepository(TransactionRepository):
         now = _utcnow()
         cur = self._conn.cursor()
 
-        cur.execute(
+        _execute(
+            cur,
             """
             UPDATE accounting_transactions
             SET deleted_at = ?, deleted_by = ?, updated_at = ?, updated_by = ?
@@ -382,7 +429,8 @@ class SqliteTransactionRepository(TransactionRepository):
             (now, user_id, now, user_id, transaction_id),
         )
 
-        cur.execute(
+        _execute(
+            cur,
             """
             UPDATE transaction_lines
             SET deleted_at = ?, deleted_by = ?, updated_at = ?, updated_by = ?

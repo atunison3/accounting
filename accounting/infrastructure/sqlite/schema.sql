@@ -367,7 +367,7 @@ CREATE TABLE IF NOT EXISTS miles_history (
 
 
 ------ Triggers for preventing created by/at
-CREATE TRIGGER trg_businesses_prevent_created_update
+CREATE TRIGGER IF NOT EXISTS trg_businesses_prevent_created_update
 BEFORE UPDATE OF created_at, created_by ON businesses
 FOR EACH ROW
 WHEN
@@ -377,7 +377,7 @@ BEGIN
     SELECT RAISE(ABORT, 'created_at and created_by cannot be updated');
 END;
 
-CREATE TRIGGER trg_accounts_prevent_created_update
+CREATE TRIGGER IF NOT EXISTS trg_accounts_prevent_created_update
 BEFORE UPDATE OF created_at, created_by ON accounts
 FOR EACH ROW
 WHEN
@@ -387,7 +387,7 @@ BEGIN
     SELECT RAISE(ABORT, 'created_at and created_by cannot be updated');
 END;
 
-CREATE TRIGGER trg_accounting_transactions_prevent_created_update
+CREATE TRIGGER IF NOT EXISTS trg_accounting_transactions_prevent_created_update
 BEFORE UPDATE OF created_at, created_by ON accounting_transactions
 FOR EACH ROW
 WHEN
@@ -397,7 +397,7 @@ BEGIN
     SELECT RAISE(ABORT, 'created_at and created_by cannot be updated');
 END;
 
-CREATE TRIGGER trg_documents_prevent_created_update
+CREATE TRIGGER IF NOT EXISTS trg_documents_prevent_created_update
 BEFORE UPDATE OF created_at, created_by ON documents
 FOR EACH ROW
 WHEN
@@ -407,7 +407,7 @@ BEGIN
     SELECT RAISE(ABORT, 'created_at and created_by cannot be updated');
 END;
 
-CREATE TRIGGER trg_accounting_transaction_documents_prevent_created_update
+CREATE TRIGGER IF NOT EXISTS trg_accounting_transaction_documents_prevent_created_update
 BEFORE UPDATE OF created_at, created_by ON accounting_transaction_documents
 FOR EACH ROW
 WHEN
@@ -417,7 +417,7 @@ BEGIN
     SELECT RAISE(ABORT, 'created_at and created_by cannot be updated');
 END;
 
-CREATE TRIGGER trg_transaction_lines_prevent_created_update
+CREATE TRIGGER IF NOT EXISTS trg_transaction_lines_prevent_created_update
 BEFORE UPDATE OF created_at, created_by ON transaction_lines
 FOR EACH ROW
 WHEN
@@ -427,7 +427,7 @@ BEGIN
     SELECT RAISE(ABORT, 'created_at and created_by cannot be updated');
 END;
 
-CREATE TRIGGER trg_miles_prevent_created_update
+CREATE TRIGGER IF NOT EXISTS trg_miles_prevent_created_update
 BEFORE UPDATE OF created_at, created_by ON miles
 FOR EACH ROW
 WHEN
@@ -442,7 +442,7 @@ END;
 
 
 ------ Trigger for copying history ------
-CREATE TRIGGER trg_account_audit_update
+CREATE TRIGGER IF NOT EXISTS trg_account_audit_update
 BEFORE UPDATE OF
     business_id,
     account_number,
@@ -478,7 +478,7 @@ BEGIN
     );
 END;
 
-CREATE TRIGGER trg_accounting_transactions_audit_update
+CREATE TRIGGER IF NOT EXISTS trg_accounting_transactions_audit_update
 BEFORE UPDATE OF
     transaction_date,
     description,
@@ -507,7 +507,7 @@ BEGIN
     );
 END;
 
-CREATE TRIGGER trg_transaction_lines_audit_update
+CREATE TRIGGER IF NOT EXISTS trg_transaction_lines_audit_update
 BEFORE UPDATE OF
     transaction_id,
     account_id,
@@ -539,7 +539,7 @@ BEGIN
     );
 END;
 
-CREATE TRIGGER trg_documents_audit_update
+CREATE TRIGGER IF NOT EXISTS trg_documents_audit_update
 BEFORE UPDATE OF document_type, document_date, title, description, filename,
     file_path, mime_type, file_size_bytes, sha256_hash, source, received_from,
     notes, updated_by, deleted_at, deleted_by
@@ -559,7 +559,7 @@ BEGIN
     );
 END;
 
-CREATE TRIGGER trg_miles_audit_update
+CREATE TRIGGER IF NOT EXISTS trg_miles_audit_update
 BEFORE UPDATE OF business_id, miles_date, tenth_miles, tenth_miles_begin,
     tenth_miles_end, explanation, vehicle, updated_by, deleted_at, deleted_by
 ON miles
@@ -584,7 +584,7 @@ END;
 
 
 ------ Triggers to update updated_at ------
-CREATE TRIGGER trg_users_updated
+CREATE TRIGGER IF NOT EXISTS trg_users_updated
 AFTER UPDATE ON users
 FOR EACH ROW
 BEGIN
@@ -593,7 +593,7 @@ BEGIN
     WHERE id = NEW.id;
 END;
 
-CREATE TRIGGER trg_businesses_updated
+CREATE TRIGGER IF NOT EXISTS trg_businesses_updated
 AFTER UPDATE OF updated_by ON businesses
 FOR EACH ROW
 BEGIN
@@ -602,7 +602,7 @@ BEGIN
     WHERE id = NEW.id;
 END;
 
-CREATE TRIGGER trg_accounts_updated
+CREATE TRIGGER IF NOT EXISTS trg_accounts_updated
 AFTER UPDATE OF updated_by ON accounts
 FOR EACH ROW
 BEGIN
@@ -611,7 +611,7 @@ BEGIN
     WHERE id = NEW.id;
 END;
 
-CREATE TRIGGER trg_accounting_transactions_updated
+CREATE TRIGGER IF NOT EXISTS trg_accounting_transactions_updated
 AFTER UPDATE OF updated_by ON accounting_transactions
 FOR EACH ROW
 BEGIN
@@ -620,7 +620,7 @@ BEGIN
     WHERE id = NEW.id;
 END;
 
-CREATE TRIGGER trg_transaction_lines_updated
+CREATE TRIGGER IF NOT EXISTS trg_transaction_lines_updated
 AFTER UPDATE OF updated_by ON transaction_lines
 FOR EACH ROW
 BEGIN
@@ -629,7 +629,7 @@ BEGIN
     WHERE id = NEW.id;
 END;
 
-CREATE TRIGGER trg_documents_updated
+CREATE TRIGGER IF NOT EXISTS trg_documents_updated
 AFTER UPDATE OF updated_by ON documents
 FOR EACH ROW
 BEGIN
@@ -638,7 +638,7 @@ BEGIN
     WHERE id = NEW.id;
 END;
 
-CREATE TRIGGER trg_miles_updated
+CREATE TRIGGER IF NOT EXISTS trg_miles_updated
 AFTER UPDATE OF updated_by ON miles
 FOR EACH ROW
 BEGIN
@@ -652,14 +652,14 @@ END;
 
 
 ------ Triggers preventing updates on audit tables
-CREATE TRIGGER trg_accounts_history_prevent_update
+CREATE TRIGGER IF NOT EXISTS trg_accounts_history_prevent_update
 BEFORE UPDATE ON accounts_history
 FOR EACH ROW
 BEGIN
     SELECT RAISE(ABORT, 'Audit records cannot be updated');
 END;
 
-CREATE TRIGGER trg_accounts_history_prevent_delete
+CREATE TRIGGER IF NOT EXISTS trg_accounts_history_prevent_delete
 BEFORE DELETE ON accounts_history
 FOR EACH ROW
 BEGIN
@@ -667,14 +667,14 @@ BEGIN
 END;
 
 
-CREATE TRIGGER trg_transaction_lines_history_prevent_update
+CREATE TRIGGER IF NOT EXISTS trg_transaction_lines_history_prevent_update
 BEFORE UPDATE ON transaction_lines_history
 FOR EACH ROW
 BEGIN
     SELECT RAISE(ABORT, 'Audit records cannot be updated');
 END;
 
-CREATE TRIGGER trg_transaction_lines_history_prevent_delete
+CREATE TRIGGER IF NOT EXISTS trg_transaction_lines_history_prevent_delete
 BEFORE DELETE ON transaction_lines_history
 FOR EACH ROW
 BEGIN
@@ -682,14 +682,14 @@ BEGIN
 END;
 
 
-CREATE TRIGGER trg_accounting_transactions_history_prevent_update
+CREATE TRIGGER IF NOT EXISTS trg_accounting_transactions_history_prevent_update
 BEFORE UPDATE ON accounting_transactions_history
 FOR EACH ROW
 BEGIN
     SELECT RAISE(ABORT, 'Audit records cannot be updated');
 END;
 
-CREATE TRIGGER trg_accounting_transactions_history_prevent_delete
+CREATE TRIGGER IF NOT EXISTS trg_accounting_transactions_history_prevent_delete
 BEFORE DELETE ON accounting_transactions_history
 FOR EACH ROW
 BEGIN
@@ -697,21 +697,21 @@ BEGIN
 END;
 
 
-CREATE TRIGGER trg_documents_history_prevent_update
+CREATE TRIGGER IF NOT EXISTS trg_documents_history_prevent_update
 BEFORE UPDATE ON documents_history
 FOR EACH ROW
 BEGIN
     SELECT RAISE(ABORT, 'Audit records cannot be updated');
 END;
 
-CREATE TRIGGER trg_documents_history_prevent_delete
+CREATE TRIGGER IF NOT EXISTS trg_documents_history_prevent_delete
 BEFORE DELETE ON documents_history
 FOR EACH ROW
 BEGIN
     SELECT RAISE(ABORT, 'Audit records cannot be deleted');
 END;
 
-CREATE TRIGGER trg_miles_history_prevent_delete
+CREATE TRIGGER IF NOT EXISTS trg_miles_history_prevent_delete
 BEFORE DELETE ON miles_history
 FOR EACH ROW
 BEGIN

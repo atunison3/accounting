@@ -7,6 +7,7 @@
 </section>
 {% if message %}<div class="notice success" role="status">{{ message }}</div>{% endif %}
 {% if error %}<div class="notice error" role="alert">{{ error }}</div>{% endif %}
+<p><a class="button secondary" href="{{ url_for('chart_of_accounts') }}">View chart of accounts</a></p>
 <section class="form-grid">
     <article class="form-card">
         <h2>Add a business</h2>
@@ -49,12 +50,23 @@
             <div><label for="transaction-date">Date</label><input id="transaction-date" name="transaction_date" type="date" required></div>
             <div><label for="transaction-user">User ID</label><input id="transaction-user" name="user_id" type="number" min="1" required></div>
             <div class="full"><label for="transaction-description">Description</label><input id="transaction-description" name="description" required></div>
-            <div><label for="debit-account">Debit account ID</label><input id="debit-account" name="debit_account_id" type="number" min="1" required></div>
-            <div><label for="credit-account">Credit account ID</label><input id="credit-account" name="credit_account_id" type="number" min="1" required></div>
-            <div><label for="transaction-amount">Amount (cents)</label><input id="transaction-amount" name="amount_cents" type="number" min="0" required></div>
+            <div class="full"><label>Transaction lines</label><div id="transaction-lines">
+                <div class="line-row"><input name="account_ids" type="number" min="1" placeholder="Account ID" required><input name="amounts_cents" type="number" min="0" placeholder="Amount (cents)" required><select name="line_types"><option value="debit">Debit</option><option value="credit">Credit</option></select></div>
+                <div class="line-row"><input name="account_ids" type="number" min="1" placeholder="Account ID" required><input name="amounts_cents" type="number" min="0" placeholder="Amount (cents)" required><select name="line_types"><option value="debit">Debit</option><option value="credit" selected>Credit</option></select></div>
+            </div><button class="button secondary add-line" type="button" onclick="addTransactionLine()">+ Add another line</button></div>
             <div><label for="posting-reference">Posting reference <span>(optional)</span></label><input id="posting-reference" name="posting_reference"></div>
             <div class="full"><button class="button primary" type="submit">Post transaction</button></div>
         </form>
+        <script>
+        function addTransactionLine() {
+            const row = document.createElement('div');
+            row.className = 'line-row';
+            row.innerHTML = '<input name="account_ids" type="number" min="1" placeholder="Account ID" required>' +
+                '<input name="amounts_cents" type="number" min="0" placeholder="Amount (cents)" required>' +
+                '<select name="line_types"><option value="debit">Debit</option><option value="credit">Credit</option></select>';
+            document.getElementById('transaction-lines').appendChild(row);
+        }
+        </script>
     </article>
 </section>
 {% endblock %}

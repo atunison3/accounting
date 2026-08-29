@@ -94,6 +94,11 @@ class AccountService:
     def for_business(self, business_id: int) -> list[Account]:
         return self.repository.get_for_business(business_id)
 
+    def update(self, account_id: int, account: Account, user_id: int) -> None:
+        if self.repository.get_by_id(account_id) is None:
+            raise ValueError(f"Account {account_id} does not exist.")
+        self.repository.update(account_id, account, user_id)
+
 
 class MileageService:
     def __init__(self, repository: Any) -> None:

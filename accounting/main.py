@@ -58,6 +58,14 @@ LOGGER = logging.getLogger("accounting.api")
 WEBSITE_STATIC_DIR = Path(__file__).with_name("website") / "static"
 
 
+def get_database_path(request: Request) -> str | Path:
+    """Resolve the database configured on the current application instance."""
+    return request.app.state.db_path
+
+
+DatabasePath = Annotated[str | Path, Depends(get_database_path)]
+
+
 def configure_logging() -> logging.Logger:
     """Configure rotating file logging without duplicating handlers."""
     LOG_DIRECTORY.mkdir(parents=True, exist_ok=True)
@@ -99,11 +107,6 @@ def create_app(db_path: str | Path = DEFAULT_DATABASE_PATH) -> FastAPI:  # noqa:
         return response
 
     logger.info("Accounting API initialized database=%s log_file=%s", db_path, LOG_FILE)
-
-    def database_path() -> str | Path:
-        return db_path
-
-    DatabasePath = Annotated[str | Path, Depends(database_path)]
 
     @app.get("/health", tags=["system"])
     def health() -> dict[str, str]:

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-heading">
+    <p class="eyebrow">ACCOUNT {{ account.account_number }}</p>
+    <h1>Edit account</h1>
+    <p class="lead">Update the account details. Changes are recorded by the SQLite audit triggers.</p>
+</section>
+<section class="form-card edit-card">
+    {% if error %}<div class="notice error" role="alert">{{ error }}</div>{% endif %}
+    <form method="post" action="{{ url_for('update_account_form', account_id=account.id) }}" class="transaction-form">
+        <div><label for="account-number">Account number</label><input id="account-number" name="account_number" type="number" min="1" value="{{ account.account_number }}" required></div>
+        <div><label for="account-name">Account name</label><input id="account-name" name="account_name" value="{{ account.account_name }}" required></div>
+        <div><label for="account-type">Account type</label><select id="account-type" name="account_type">
+            {% for account_type in ['Asset', 'Contra-asset', 'Liability', 'Equity', 'Revenue', 'Expense'] %}<option value="{{ account_type }}" {% if account.account_type.value == account_type %}selected{% endif %}>{{ account_type }}</option>{% endfor %}
+        </select></div>
+        <div><label for="updated-by">Updated by user ID</label><input id="updated-by" name="updated_by" type="number" min="1" required></div>
+        <div class="full"><label for="description">Description</label><input id="description" name="description" value="{{ account.description or '' }}"></div>
+        <label class="checkbox"><input name="is_debit" type="checkbox" {% if account.is_debit %}checked{% endif %}> Normal balance is debit</label>
+        <label class="checkbox"><input name="is_account_active" type="checkbox" {% if account.is_account_active %}checked{% endif %}> Account is active</label>
+        <div class="full actions"><button class="button primary" type="submit">Save changes</button><a class="button secondary" href="{{ url_for('chart_of_accounts') }}?business_id={{ account.business_id }}">Cancel</a></div>
+    </form>
+</section>
+{% endblock %}

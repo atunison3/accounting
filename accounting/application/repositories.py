@@ -37,6 +37,9 @@ class AccountRepository:
     def get_for_business(self, business_id: int) -> list[Account]:
         raise NotImplementedError
 
+    def update(self, account_id: int, account: Account, user_id: int) -> None:
+        raise NotImplementedError
+
 
 class UserRepository:
     def add(self, user: User) -> int:
