@@ -8,6 +8,7 @@ from accounting.domain.models import (
     Business,
     Document,
     Mileage,
+    TransactionEntry,
     TransactionLine,
 )
 
@@ -51,6 +52,26 @@ class AccountingService:
         else:
             add = self.repository.add
         return add(transaction=transaction, lines=lines, user_id=user_id)
+
+    def list_transactions(  # noqa: PLR0913, PLR0917
+        self,
+        business_id: int,
+        account_number: int | None = None,
+        is_debit: bool | None = None,
+        min_amount_cents: int | None = None,
+        max_amount_cents: int | None = None,
+        date_from: date | None = None,
+        date_to: date | None = None,
+    ) -> list[TransactionEntry]:
+        return self.repository.search(
+            business_id,
+            account_number,
+            is_debit,
+            min_amount_cents,
+            max_amount_cents,
+            date_from,
+            date_to,
+        )
 
     def get_transaction(self, transaction_id: int) -> AccountingTransaction | None:
         get = getattr(type(self.repository), "get_by_id", None)

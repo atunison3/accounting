@@ -1,4 +1,5 @@
-from datetime import date
+from datetime import date, timedelta
+from decimal import Decimal, InvalidOperation
 import logging
 import re
 from io import BytesIO
@@ -34,6 +35,29 @@ LOGGER = logging.getLogger("accounting.api.website.routes")
 
 def _database_path(request: Request) -> str | Path:
     return getattr(request.app.state, "db_path", DEFAULT_DATABASE_PATH)
+
+
+def _optional_int(value: str | None) -> int | None:
+    return int(value) if value and value.strip() else None
+
+
+def _optional_decimal(value: str | None) -> Decimal | None:
+    return Decimal(value) if value and value.strip() else None
+
+
+def _optional_date(value: str | None) -> date | None:
+    return date.fromisoformat(value) if value and value.strip() else None
+
+
+def _dollars_to_cents(value: Decimal) -> int:
+    """Convert a dollar amount with at most two decimals to integer cents."""
+    exponent = value.as_tuple().exponent
+    if not value.is_finite() or value < 0 or not isinstance(exponent, int) or exponent < -2:
+        raise ValueError("Amount must be a non-negative dollar value with at most two decimal places.")
+    try:
+        return int(value * 100)
+    except (InvalidOperation, ValueError) as exc:
+        raise ValueError("Amount must be a valid dollar value.") from exc
 
 
 def _dashboard(request: Request, error: str | None = None) -> HTMLResponse:
@@ -113,6 +137,73 @@ def about(request: Request) -> HTMLResponse:
 def dashboard(request: Request) -> HTMLResponse:
     LOGGER.debug("Rendering dashboard page")
     return _dashboard(request)
+
+
+@router.get("/transactions", response_class=HTMLResponse, name="transactions_dashboard")
+def transactions_dashboard(  # noqa: PLR0913, PLR0917
+    request: Request,
+    business_id: int | None = None,
+    account_number: str | None = None,
+    entry_type: str | None = None,
+    amount_min: str | None = None,
+    amount_max: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    days: int = 30,
+) -> HTMLResponse:
+    LOGGER.debug("Rendering transactions dashboard business_id=%s", business_id)
+    businesses = []
+    accounts = []
+    transactions = []
+    error = None
+    try:
+        selected_account = _optional_int(account_number)
+        selected_amount_min = _optional_decimal(amount_min)
+        selected_amount_max = _optional_decimal(amount_max)
+        selected_date_from = _optional_date(date_from)
+        selected_date_to = _optional_date(date_to)
+        if days < 1:
+            raise ValueError("Days must be at least 1.")
+        if selected_date_from is None:
+            selected_date_from = date.today() - timedelta(days=days - 1)
+        if selected_date_to is None:
+            selected_date_to = date.today()
+        is_debit = None if not entry_type else entry_type == "debit"
+        if entry_type not in {None, "", "debit", "credit"}:
+            raise ValueError("Entry type must be debit or credit.")
+        with get_connection(_database_path(request)) as connection:
+            businesses = SqliteBusinessRepository(connection).get_all()
+            if business_id is not None:
+                accounts = SqliteAccountRepository(connection).get_for_business(business_id)
+                transactions = AccountingService(SqliteTransactionRepository(connection)).list_transactions(
+                    business_id=business_id,
+                    account_number=selected_account,
+                    is_debit=is_debit,
+                    min_amount_cents=(
+                        _dollars_to_cents(selected_amount_min) if selected_amount_min is not None else None
+                    ),
+                    max_amount_cents=(
+                        _dollars_to_cents(selected_amount_max) if selected_amount_max is not None else None
+                    ),
+                    date_from=selected_date_from,
+                    date_to=selected_date_to,
+                )
+    except Exception as exc:
+        LOGGER.exception("Transaction dashboard query failed")
+        error = str(exc)
+    return templates.TemplateResponse(
+        request=request,
+        name="transactions.html",
+        context={
+            "page_title": "Transactions",
+            "businesses": businesses,
+            "accounts": accounts,
+            "transactions": transactions,
+            "filters": request.query_params,
+            "days": days,
+            "error": error,
+        },
+    )
 
 
 @router.get("/chart-of-accounts", response_class=HTMLResponse, name="chart_of_accounts")
@@ -330,15 +421,16 @@ def create_transaction_form(  # noqa: PLR0913, PLR0917
     transaction_date: str = Form(...),
     description: str = Form(...),
     account_numbers: list[int] = Form(...),  # noqa: B008
-    amounts_cents: list[int] = Form(...),  # noqa: B008
+    amounts: list[Decimal] = Form(...),  # noqa: B008
     line_types: list[str] = Form(...),  # noqa: B008
     user_id: int = Form(...),
     posting_reference: str | None = Form(None),
 ) -> HTMLResponse | RedirectResponse:
     LOGGER.debug("Creating transaction line_count=%s", len(account_numbers))
     try:
-        if not (len(account_numbers) == len(amounts_cents) == len(line_types)):
+        if not (len(account_numbers) == len(amounts) == len(line_types)):
             raise ValueError("Each transaction line needs an account, amount, and type.")
+        amounts_cents = [_dollars_to_cents(amount) for amount in amounts]
         with get_connection(_database_path(request)) as connection:
             repository = SqliteAccountRepository(connection)
             account_ids = []

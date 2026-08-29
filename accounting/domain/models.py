@@ -134,6 +134,17 @@ class AccountingTransactionDocument(DatabaseModel):
     document_id: int
 
 
+class TransactionEntry(BaseModel):
+    transaction_id: int
+    transaction_date: date
+    description: str
+    posting_reference: str | None = None
+    account_number: int
+    account_name: str
+    amount_cents: int
+    is_debit: bool
+
+
 class TAccountDisplay(BaseModel):
     account_title: str
     debits: list[int]

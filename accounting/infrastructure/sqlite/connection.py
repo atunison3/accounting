@@ -20,6 +20,7 @@ def create_connection(db_path: str | Path = DEFAULT_DATABASE_PATH) -> sqlite3.Co
     conn.execute("PRAGMA journal_mode = WAL")
     conn.executescript(SCHEMA_FILE_PATH.read_text(encoding="utf-8"))
     _remove_legacy_user_credential_column(conn)
+    _migrate_transaction_business_id(conn)
     return conn
 
 
@@ -28,6 +29,25 @@ def _remove_legacy_user_credential_column(conn: sqlite3.Connection) -> None:
     columns = {row[1] for row in conn.execute("PRAGMA table_info(users)")}
     if "password_hash" in columns:
         conn.execute("ALTER TABLE users DROP COLUMN password_hash")
+
+
+def _migrate_transaction_business_id(conn: sqlite3.Connection) -> None:
+    """Add and backfill business ownership for older transactions."""
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(accounting_transactions)")}
+    if "business_id" not in columns:
+        conn.execute("ALTER TABLE accounting_transactions ADD COLUMN business_id INTEGER REFERENCES businesses(id)")
+    conn.execute("""
+        UPDATE accounting_transactions
+        SET business_id = (
+            SELECT a.business_id
+            FROM transaction_lines AS l
+            JOIN accounts AS a ON a.id = l.account_id
+            WHERE l.transaction_id = accounting_transactions.id
+            GROUP BY a.business_id
+            HAVING COUNT(DISTINCT a.business_id) = 1
+        )
+        WHERE business_id IS NULL
+        """)
 
 
 @contextmanager

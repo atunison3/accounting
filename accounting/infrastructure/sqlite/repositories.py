@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 import sqlite3
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from accounting.domain.models import (
     Account,
@@ -11,6 +11,7 @@ from accounting.domain.models import (
     AccountingTransaction,
     Business,
     TransactionLine,
+    TransactionEntry,
     User,
 )
 from accounting.application.repositories import (
@@ -406,6 +407,69 @@ class SqliteTransactionRepository(TransactionRepository):
             (transaction_id,),
         )
         return [_row_to_line(row) for row in cur.fetchall()]
+
+    def search(  # noqa: PLR0913, PLR0917
+        self,
+        business_id: int,
+        account_number: int | None = None,
+        is_debit: bool | None = None,
+        min_amount_cents: int | None = None,
+        max_amount_cents: int | None = None,
+        date_from: date | None = None,
+        date_to: date | None = None,
+    ) -> list[TransactionEntry]:
+        debit_filter = _bool_to_int(is_debit) if is_debit is not None else None
+        parameters = (
+            business_id,
+            account_number,
+            account_number,
+            debit_filter,
+            debit_filter,
+            min_amount_cents,
+            min_amount_cents,
+            max_amount_cents,
+            max_amount_cents,
+            date_from.isoformat() if date_from is not None else None,
+            date_from.isoformat() if date_from is not None else None,
+            date_to.isoformat() if date_to is not None else None,
+            date_to.isoformat() if date_to is not None else None,
+        )
+        cur = self._conn.cursor()
+        _execute(
+            cur,
+            """
+            SELECT t.id AS transaction_id, t.transaction_date, t.description,
+                   t.posting_reference, a.account_number, a.account_name,
+                   l.amount_cents, l.is_debit
+            FROM accounting_transactions AS t
+            JOIN transaction_lines AS l ON l.transaction_id = t.id
+            JOIN accounts AS a ON a.id = l.account_id
+            WHERE t.business_id = ?
+              AND t.deleted_at IS NULL
+              AND l.deleted_at IS NULL
+              AND (? IS NULL OR a.account_number = ?)
+              AND (? IS NULL OR l.is_debit = ?)
+              AND (? IS NULL OR l.amount_cents >= ?)
+              AND (? IS NULL OR l.amount_cents <= ?)
+              AND (? IS NULL OR t.transaction_date >= ?)
+              AND (? IS NULL OR t.transaction_date <= ?)
+            ORDER BY t.transaction_date DESC, t.id DESC, l.id
+            """,
+            parameters,
+        )
+        return [
+            TransactionEntry(
+                transaction_id=row["transaction_id"],
+                transaction_date=row["transaction_date"],
+                description=row["description"],
+                posting_reference=row["posting_reference"],
+                account_number=row["account_number"],
+                account_name=row["account_name"],
+                amount_cents=row["amount_cents"],
+                is_debit=_int_to_bool(row["is_debit"]),
+            )
+            for row in cur.fetchall()
+        ]
 
     def delete(self, transaction_id: int, user_id: int) -> None:
         """Soft-delete the transaction and all its lines."""

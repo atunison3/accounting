@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-heading">
+    <p class="eyebrow">GENERAL LEDGER</p>
+    <h1>Transactions</h1>
+    <p class="lead">Review every posting for a business and filter the journal by account, direction, amount, or date.</p>
+</section>
+<section class="selector-card">
+    <form method="get" action="{{ url_for('transactions_dashboard') }}" class="filters">
+        <div><label for="transaction-business">Business</label><select id="transaction-business" name="business_id" required><option value="">Select a business</option>{% for business in businesses %}<option value="{{ business.id }}" {% if filters.get('business_id') == business.id|string %}selected{% endif %}>{{ business.title }}</option>{% endfor %}</select></div>
+        <div><label for="account-number">Account</label><select id="account-number" name="account_number"><option value="">All accounts</option>{% for account in accounts %}<option value="{{ account.account_number }}" {% if filters.get('account_number') == account.account_number|string %}selected{% endif %}>{{ account.account_number }} · {{ account.account_name }}</option>{% endfor %}</select></div>
+        <div><label for="entry-type">Debit or credit</label><select id="entry-type" name="entry_type"><option value="">Both</option><option value="debit" {% if filters.get('entry_type') == 'debit' %}selected{% endif %}>Debit</option><option value="credit" {% if filters.get('entry_type') == 'credit' %}selected{% endif %}>Credit</option></select></div>
+        <div><label for="amount-min">Minimum amount ($)</label><input id="amount-min" name="amount_min" type="number" min="0" step="0.01" value="{{ filters.get('amount_min', '') }}"></div>
+        <div><label for="amount-max">Maximum amount ($)</label><input id="amount-max" name="amount_max" type="number" min="0" step="0.01" value="{{ filters.get('amount_max', '') }}"></div>
+        <div><label for="date-from">From date</label><input id="date-from" name="date_from" type="date" value="{{ filters.get('date_from', '') }}"></div>
+        <div><label for="date-to">To date</label><input id="date-to" name="date_to" type="date" value="{{ filters.get('date_to', '') }}"></div>
+        <div><label for="days">Last N days</label><input id="days" name="days" type="number" min="1" value="{{ filters.get('days', days) }}"><small class="field-help">Used when dates are blank (default: 30).</small></div>
+        <div class="filter-actions"><button class="button primary" type="submit">Apply filters</button><a class="button secondary" href="{{ url_for('transactions_dashboard') }}">Clear</a></div>
+    </form>
+</section>
+{% if error %}<div class="notice error" role="alert">{{ error }}</div>{% endif %}
+{% if filters.get('business_id') %}<section class="table-card"><div class="table-heading"><h2>Transaction lines</h2><span>{{ transactions|length }} result{{ '' if transactions|length == 1 else 's' }} · last {{ days }} days</span></div>{% if transactions %}<div class="table-wrap"><table><thead><tr><th>Date</th><th>Description</th><th>Account</th><th>Debit</th><th>Credit</th><th>Reference</th></tr></thead><tbody>{% for transaction in transactions %}<tr><td>{{ transaction.transaction_date }}</td><td>{{ transaction.description }}</td><td><strong>{{ transaction.account_number }}</strong> · {{ transaction.account_name }}</td><td>{% if transaction.is_debit %}${{ '%.2f'|format(transaction.amount_cents / 100) }}{% endif %}</td><td>{% if not transaction.is_debit %}${{ '%.2f'|format(transaction.amount_cents / 100) }}{% endif %}</td><td>{{ transaction.posting_reference or '—' }}</td></tr>{% endfor %}</tbody></table></div>{% else %}<p class="empty">No transactions match these filters.</p>{% endif %}</section>{% endif %}
+{% endblock %}

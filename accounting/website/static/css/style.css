@@ -62,6 +62,13 @@ h2 { line-height: 1.15; letter-spacing: -.03em; }
 .notice.error { background: #fff0ef; border-left-color: #b83b31; color: #8e2c24; }
 .selector-card, .table-card { background: var(--white); border: 1px solid var(--line); border-radius: 10px; margin-bottom: 22px; padding: 24px; }
 .business-selector { align-items: end; display: flex; flex-wrap: wrap; gap: 12px; }
+.filters { display: grid; gap: 14px; grid-template-columns: repeat(4, 1fr); }
+.filters label { display: grid; font-size: .9rem; font-weight: 700; gap: 5px; }
+.filters input, .filters select { border: 1px solid var(--line); border-radius: 6px; font: inherit; min-width: 0; padding: 10px; }
+.field-help { color: var(--muted); font-size: .75rem; margin-top: 4px; }
+.filter-actions { align-items: end; display: flex; gap: 8px; }
+.filter-actions .button { cursor: pointer; font: inherit; }
+@media (max-width: 800px) { .filters { grid-template-columns: repeat(2, 1fr); } }
 .business-selector label { display: grid; font-weight: 700; gap: 6px; width: min(100%, 420px); }
 .business-selector select { border: 1px solid var(--line); border-radius: 6px; font: inherit; padding: 10px; }
 .table-heading { align-items: center; display: flex; justify-content: space-between; }
