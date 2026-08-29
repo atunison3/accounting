@@ -116,6 +116,7 @@ CREATE TABLE IF NOT EXISTS accounts (
     account_type      TEXT    NOT NULL,
     description       TEXT,
     is_account_active INTEGER NOT NULL DEFAULT 1,
+    is_debit          INTEGER NOT NULL,  -- Normal balance is debit yes/no
 
     created_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_by  INTEGER,
@@ -125,7 +126,10 @@ CREATE TABLE IF NOT EXISTS accounts (
     deleted_by  INTEGER REFERENCES users(id),
 
     CHECK (
-        account_type in ('Asset', 'Liability', 'Equity', 'Revenue', 'Expense')
+        account_type in ('Asset', 'Contra-asset', 'Liability', 'Equity', 'Revenue', 'Expense')
+    ),
+    CHECK (
+        is_debit in (0, 1)
     ),
 
     CHECK (
@@ -135,7 +139,7 @@ CREATE TABLE IF NOT EXISTS accounts (
 
     FOREIGN KEY (created_by) REFERENCES users(id),
     FOREIGN KEY (updated_by) REFERENCES users(id),
-    FOREIGN KEY (deleted_by) REFERENCES users(id)
+    FOREIGN KEY (deleted_by) REFERENCES users(id),
 
     UNIQUE (business_id, account_number)
 );
@@ -448,7 +452,7 @@ BEFORE UPDATE OF
     is_account_active,
     updated_by,
     deleted_at,
-    deteled_by
+    deleted_by
 ON accounts
 FOR EACH ROW
 BEGIN
@@ -536,98 +540,41 @@ BEGIN
 END;
 
 CREATE TRIGGER trg_documents_audit_update
-BEFORE UPDATE OF
-    transaction_id,
-    document_type,
-    document_date,
-    title,
-    description,
-    filename,
-    file_path,
-    mime_type,
-    file_size_bytes,
-    sha256_hash,
-    source,
-    received_from,
-    notes,
-    updated_by,
-    deleted_at,
-    deleted_by
+BEFORE UPDATE OF document_type, document_date, title, description, filename,
+    file_path, mime_type, file_size_bytes, sha256_hash, source, received_from,
+    notes, updated_by, deleted_at, deleted_by
 ON documents
 FOR EACH ROW
 BEGIN
     INSERT INTO documents_history (
-        transaction_id,
-        document_type,
-        document_date,
-        title,
-        description,
-        filename,
-        file_path,
-        mime_type,
-        file_size_bytes,
-        sha256_hash,
-        source,
-        received_from,
-        notes,
-        updated_at,
-        updated_by
+        document_id, document_type, document_date, title, description, filename,
+        file_path, mime_type, file_size_bytes, sha256_hash, source, received_from,
+        notes, updated_at, updated_by
     )
     VALUES (
-        OLD.id,
-        OLD.transaction_id,
-        OLD.document_type,
-        OLD.document_date,
-        OLD.title,
-        OLD.description,
-        OLD.filename,
-        OLD.file_path,
-        OLD.mime_type,
-        OLD.file_size_bytes,
-
-        CURRENT_TIMESTAMP,
-        NEW.updated_by
+        OLD.id, OLD.document_type, OLD.document_date, OLD.title, OLD.description,
+        OLD.filename, OLD.file_path, OLD.mime_type, OLD.file_size_bytes,
+        OLD.sha256_hash, OLD.source, OLD.received_from, OLD.notes,
+        CURRENT_TIMESTAMP, NEW.updated_by
     );
 END;
 
 CREATE TRIGGER trg_miles_audit_update
-BEFORE UPDATE OF
-    miles_id,
-    business_id,
-    miles_date,
-    tenth_miles,
-    tenth_miles_start,
-    tenth_miles_end,
-    explanation,
-    vehicle,
-    updated_at,
-    updated_by,
-    deleted_at,
-    deteled_by
-ON accounts
+BEFORE UPDATE OF business_id, miles_date, tenth_miles, tenth_miles_begin,
+    tenth_miles_end, explanation, vehicle, updated_by, deleted_at, deleted_by
+ON miles
 FOR EACH ROW
 BEGIN
-    INSERT INTO accounts_history (
-        miles_id,
-        business_id,
-        miles_date,
-        tenth_miles,
-        tenth_miles_start,
-        tenth_miles_end,
-        explanation,
-        vehicle,
-        updated_at,
-        updated_by
+    INSERT INTO miles_history (
+        miles_id, business_id, miles_date, tenth_miles, tenth_miles_begin,
+        tenth_miles_end, explanation, vehicle, created_at, created_by,
+        updated_at, updated_by, deleted_at, deleted_by
     )
     VALUES (
-        OLD.id,
-        OLD.account_number,
-        OLD.account_name,
-        OLD.account_type,
-        OLD.description,
-        OLD.is_account_active,
-        CURRENT_TIMESTAMP,
-        NEW.updated_by
+        OLD.id, OLD.business_id, OLD.miles_date, OLD.tenth_miles,
+        OLD.tenth_miles_begin, OLD.tenth_miles_end, OLD.explanation, OLD.vehicle,
+        OLD.created_at, OLD.created_by, CURRENT_TIMESTAMP, NEW.updated_by,
+        OLD.deleted_at, OLD.deleted_by
     );
 END;
 
