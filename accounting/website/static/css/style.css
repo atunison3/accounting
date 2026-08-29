@@ -41,7 +41,11 @@ h2 { line-height: 1.15; letter-spacing: -.03em; }
 .transaction-form { grid-template-columns: repeat(2, 1fr); column-gap: 18px; }
 .transaction-form .full { grid-column: 1 / -1; }
 #transaction-lines { display: grid; gap: 8px; }
-.line-row { display: grid; gap: 8px; grid-template-columns: 1fr 1fr 140px; }
+.line-row { display: grid; gap: 8px; grid-template-columns: 1fr 1fr 140px 1.5fr; }
+.line-row input[type="hidden"] { display: none; }
+.account-result { align-self: center; color: var(--muted); font-size: .85rem; }
+.account-result.found { color: var(--accent-dark); }
+.account-result.missing { color: #9b2c25; }
 .line-row input, .line-row select { width: 100%; }
 .add-line { font-size: .9rem; margin-top: 10px !important; }
 .checkbox { align-items: center; display: flex; gap: 8px; }
@@ -80,4 +84,4 @@ th { color: var(--muted); font-size: .8rem; letter-spacing: .05em; text-transfor
 .table-action:hover { color: var(--accent-dark); text-decoration: underline; }
 .edit-card { max-width: 850px; margin-bottom: 80px; }
 .footer { border-top: 1px solid var(--line); color: var(--muted); padding: 24px 0 40px; font-size: .9rem; }
-@media (max-width: 700px) { .nav { align-items: flex-start; flex-direction: column; padding: 18px 0; } .nav-links { flex-wrap: wrap; gap: 10px 16px; } .hero { padding-top: 70px; } .cards, .dashboard-grid, .form-grid, .transaction-form { grid-template-columns: 1fr; } .form-card.wide, .transaction-form .full { grid-column: auto; } .line-row { grid-template-columns: 1fr; } }
+@media (max-width: 700px) { .nav { align-items: flex-start; flex-direction: column; padding: 18px 0; } .nav-links { flex-wrap: wrap; gap: 10px 16px; } .hero { padding-top: 70px; } .cards, .dashboard-grid, .form-grid, .transaction-form { grid-template-columns: 1fr; } .form-card.wide, .transaction-form .full { grid-column: auto; } .line-row { grid-template-columns: 1fr; } .account-result { align-self: start; } }

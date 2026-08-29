@@ -47,12 +47,13 @@
         <h2>Post a transaction</h2>
         <p class="muted">A simple two-line journal entry. Debits and credits must match.</p>
         <form method="post" action="{{ url_for('create_transaction_form') }}" class="transaction-form">
+            <div><label for="transaction-business">Business ID</label><input id="transaction-business" name="business_id" type="number" min="1" required></div>
             <div><label for="transaction-date">Date</label><input id="transaction-date" name="transaction_date" type="date" required></div>
             <div><label for="transaction-user">User ID</label><input id="transaction-user" name="user_id" type="number" min="1" required></div>
             <div class="full"><label for="transaction-description">Description</label><input id="transaction-description" name="description" required></div>
             <div class="full"><label>Transaction lines</label><div id="transaction-lines">
-                <div class="line-row"><input name="account_ids" type="number" min="1" placeholder="Account ID" required><input name="amounts_cents" type="number" min="0" placeholder="Amount (cents)" required><select name="line_types"><option value="debit">Debit</option><option value="credit">Credit</option></select></div>
-                <div class="line-row"><input name="account_ids" type="number" min="1" placeholder="Account ID" required><input name="amounts_cents" type="number" min="0" placeholder="Amount (cents)" required><select name="line_types"><option value="debit">Debit</option><option value="credit" selected>Credit</option></select></div>
+                <div class="line-row"><input name="account_numbers" type="number" min="1" placeholder="Account number" onchange="lookupAccount(this)" required><input name="account_ids" type="hidden"><input name="amounts_cents" type="number" min="0" placeholder="Amount (cents)" required><select name="line_types"><option value="debit">Debit</option><option value="credit">Credit</option></select><span class="account-result"></span></div>
+                <div class="line-row"><input name="account_numbers" type="number" min="1" placeholder="Account number" onchange="lookupAccount(this)" required><input name="account_ids" type="hidden"><input name="amounts_cents" type="number" min="0" placeholder="Amount (cents)" required><select name="line_types"><option value="debit">Debit</option><option value="credit" selected>Credit</option></select><span class="account-result"></span></div>
             </div><button class="button secondary add-line" type="button" onclick="addTransactionLine()">+ Add another line</button></div>
             <div><label for="posting-reference">Posting reference <span>(optional)</span></label><input id="posting-reference" name="posting_reference"></div>
             <div class="full"><button class="button primary" type="submit">Post transaction</button></div>
@@ -61,10 +62,32 @@
         function addTransactionLine() {
             const row = document.createElement('div');
             row.className = 'line-row';
-            row.innerHTML = '<input name="account_ids" type="number" min="1" placeholder="Account ID" required>' +
+            row.innerHTML = '<input name="account_numbers" type="number" min="1" placeholder="Account number" onchange="lookupAccount(this)" required>' +
+                '<input name="account_ids" type="hidden">' +
                 '<input name="amounts_cents" type="number" min="0" placeholder="Amount (cents)" required>' +
-                '<select name="line_types"><option value="debit">Debit</option><option value="credit">Credit</option></select>';
+                '<select name="line_types"><option value="debit">Debit</option><option value="credit">Credit</option></select>' +
+                '<span class="account-result"></span>';
             document.getElementById('transaction-lines').appendChild(row);
+        }
+        async function lookupAccount(input) {
+            const businessId = document.getElementById('transaction-business').value;
+            const row = input.closest('.line-row');
+            const result = row.querySelector('.account-result');
+            const hiddenId = row.querySelector('input[name="account_ids"]');
+            if (!businessId || !input.value) return;
+            result.textContent = 'Looking up…';
+            try {
+                const response = await fetch(`/accounts/lookup?business_id=${businessId}&account_number=${input.value}`);
+                if (!response.ok) throw new Error('Account not found');
+                const account = await response.json();
+                hiddenId.value = account.id;
+                result.textContent = `${account.name} (ID ${account.id})`;
+                result.className = 'account-result found';
+            } catch (error) {
+                hiddenId.value = '';
+                result.textContent = 'Account not found';
+                result.className = 'account-result missing';
+            }
         }
         </script>
     </article>

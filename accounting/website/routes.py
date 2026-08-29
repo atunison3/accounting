@@ -5,7 +5,7 @@ from io import BytesIO
 from pathlib import Path
 
 from fastapi import APIRouter, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 
 from accounting.application.services import AccountService, AccountingService
@@ -313,21 +313,40 @@ def create_account_form(  # noqa: PLR0913, PLR0917
     return RedirectResponse(url="/dashboard?message=Account%20added", status_code=303)
 
 
+@router.get("/accounts/lookup", name="lookup_account")
+def lookup_account(request: Request, business_id: int, account_number: int) -> JSONResponse:
+    LOGGER.debug("Looking up account business_id=%s account_number=%s", business_id, account_number)
+    with get_connection(_database_path(request)) as connection:
+        account = SqliteAccountRepository(connection).get_by_number(business_id, account_number)
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found for this business")
+    return JSONResponse({"id": account.id, "account_number": account.account_number, "name": account.account_name})
+
+
 @router.post("/transactions/create", response_class=HTMLResponse, response_model=None, name="create_transaction_form")
 def create_transaction_form(  # noqa: PLR0913, PLR0917
     request: Request,
+    business_id: int = Form(...),
     transaction_date: str = Form(...),
     description: str = Form(...),
-    account_ids: list[int] = Form(...),  # noqa: B008
+    account_numbers: list[int] = Form(...),  # noqa: B008
     amounts_cents: list[int] = Form(...),  # noqa: B008
     line_types: list[str] = Form(...),  # noqa: B008
     user_id: int = Form(...),
     posting_reference: str | None = Form(None),
 ) -> HTMLResponse | RedirectResponse:
-    LOGGER.debug("Creating transaction line_count=%s", len(account_ids))
+    LOGGER.debug("Creating transaction line_count=%s", len(account_numbers))
     try:
-        if not (len(account_ids) == len(amounts_cents) == len(line_types)):
+        if not (len(account_numbers) == len(amounts_cents) == len(line_types)):
             raise ValueError("Each transaction line needs an account, amount, and type.")
+        with get_connection(_database_path(request)) as connection:
+            repository = SqliteAccountRepository(connection)
+            account_ids = []
+            for account_number in account_numbers:
+                account = repository.get_by_number(business_id, account_number)
+                if account is None or account.id is None:
+                    raise ValueError(f"Account number {account_number} was not found for this business.")
+                account_ids.append(account.id)
         lines = [
             TransactionLine(
                 transaction_id=0,
