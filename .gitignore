@@ -4,6 +4,7 @@ config.local.toml
 my_sandbox.ipynb
 .data/
 accounting.db
+pr-description.md
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

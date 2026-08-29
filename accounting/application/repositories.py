@@ -1,6 +1,13 @@
-# accounting/application/repositories.py
-
-from accounting.domain.models import AccountingTransaction, TransactionLine, Account, User, Business
+from accounting.domain.models import (
+    Account,
+    AccountingTransaction,
+    AccountingTransactionDocument,
+    Business,
+    Document,
+    Mileage,
+    TransactionLine,
+    User,
+)
 
 
 class TransactionRepository:
@@ -50,4 +57,28 @@ class BusinessRepository:
         raise NotImplementedError
 
     def get_all(self) -> list[Business]:
+        raise NotImplementedError
+
+
+class MileageRepository:
+    def add(self, mileage: Mileage) -> int:
+        raise NotImplementedError
+
+    def get_by_id(self, mileage_id: int) -> Mileage | None:
+        raise NotImplementedError
+
+
+class DocumentRepository:
+    def add(self, document: Document) -> int:
+        raise NotImplementedError
+
+    def get_by_id(self, document_id: int) -> Document | None:
+        raise NotImplementedError
+
+
+class TransactionDocumentRepository:
+    def add(self, link: AccountingTransactionDocument) -> int:
+        raise NotImplementedError
+
+    def get_for_transaction(self, transaction_id: int) -> list[Document]:
         raise NotImplementedError

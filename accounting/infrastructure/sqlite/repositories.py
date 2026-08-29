@@ -46,11 +46,11 @@ def _row_to_user(row: sqlite3.Row) -> User:
         email=row["email"],
         is_active=_int_to_bool(row["is_active"]),
         created_at=row["created_at"],
-        created_by=row["created_by"],
+        created_by=None,
         updated_at=row["updated_at"],
-        updated_by=row["updated_by"],
+        updated_by=None,
         deleted_at=row["deleted_at"],
-        deleted_by=row["deleted_by"],
+        deleted_by=None,
     )
 
 
@@ -61,6 +61,7 @@ def _row_to_business(row: sqlite3.Row) -> Business:
         tax_id=row["tax_id"],
         is_business_active=_int_to_bool(row["is_business_active"]),
         established=row["established"],
+        tax_year_end_month=row["tax_year_end_month"],
         created_at=row["created_at"],
         created_by=row["created_by"],
         updated_at=row["updated_at"],
@@ -79,6 +80,7 @@ def _row_to_account(row: sqlite3.Row) -> Account:
         account_type=AccountType(row["account_type"]),
         description=row["description"],
         is_account_active=_int_to_bool(row["is_account_active"]),
+        is_debit=_int_to_bool(row["is_debit"]),
         created_at=row["created_at"],
         created_by=row["created_by"],
         updated_at=row["updated_at"],
@@ -135,8 +137,8 @@ class SqliteUserRepository(UserRepository):
             """
             INSERT INTO users (
                 username, first_name, last_name, email, is_active,
-                created_at, created_by, updated_at, updated_by
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 user.username,
@@ -145,9 +147,7 @@ class SqliteUserRepository(UserRepository):
                 user.email,
                 _bool_to_int(user.is_active),
                 now,
-                user.created_by,
                 now,
-                user.updated_by or user.created_by,
             ),
         )
         last_row_id = cur.lastrowid
@@ -230,9 +230,9 @@ class SqliteAccountRepository(AccountRepository):
             """
             INSERT INTO accounts (
                 business_id, account_number, account_name, account_type,
-                description, is_account_active,
+                description, is_account_active, is_debit,
                 created_at, created_by, updated_at, updated_by
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 account.business_id,
@@ -241,6 +241,7 @@ class SqliteAccountRepository(AccountRepository):
                 account.account_type.value,
                 account.description,
                 _bool_to_int(account.is_account_active),
+                _bool_to_int(account.is_debit),
                 now,
                 account.created_by,
                 now,
@@ -342,10 +343,9 @@ class SqliteTransactionRepository(TransactionRepository):
                 ),
             )
 
-        last_row_id = cur.lastrowid
-        if not isinstance(last_row_id, int):
-            raise RuntimeError
-        return last_row_id
+        if not isinstance(transaction_id, int):
+            raise RuntimeError("Failed to insert transaction: no lastrowid returned")
+        return transaction_id
 
     def get_by_id(self, transaction_id: int) -> AccountingTransaction | None:
         cur = self._conn.cursor()
