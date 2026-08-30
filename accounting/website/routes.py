@@ -294,7 +294,7 @@ def api_transactions(  # noqa: PLR0913, PLR0917
 
 
 @router.get("/transactions/{transaction_id}/edit", response_class=HTMLResponse, name="edit_transaction")
-def edit_transaction(request: Request, transaction_id: int) -> HTMLResponse:
+def edit_transaction(request: Request, transaction_id: int, return_to: str | None = None) -> HTMLResponse:
     with get_connection(_database_path(request)) as connection:
         repository = SqliteTransactionRepository(connection)
         transaction = repository.get_by_id(transaction_id)
@@ -306,7 +306,13 @@ def edit_transaction(request: Request, transaction_id: int) -> HTMLResponse:
     return templates.TemplateResponse(
         request=request,
         name="edit_transaction.html",
-        context={"page_title": "Edit transaction", "transaction": transaction, "line_data": line_data, "error": None},
+        context={
+            "page_title": "Edit transaction",
+            "transaction": transaction,
+            "line_data": line_data,
+            "return_to": return_to or "/transactions",
+            "error": None,
+        },
     )
 
 
@@ -328,6 +334,7 @@ def update_transaction_form(  # noqa: PLR0913, PLR0917
     line_types: list[str] = Form(...),  # noqa: B008
     user_id: int = Form(...),
     posting_reference: str | None = Form(None),
+    return_to: str | None = Form(None),
 ) -> HTMLResponse | RedirectResponse:
     try:
         if not (len(account_numbers) == len(amounts) == len(line_types)):
@@ -363,7 +370,12 @@ def update_transaction_form(  # noqa: PLR0913, PLR0917
     except Exception as exc:
         LOGGER.exception("Transaction update failed transaction_id=%s", transaction_id)
         return _dashboard(request, f"Could not update transaction: {exc}")
-    return RedirectResponse(url=f"/transactions?business_id={business_id}", status_code=303)
+    destination = (
+        return_to
+        if return_to and return_to.startswith("/") and not return_to.startswith("//")
+        else f"/transactions?business_id={business_id}"
+    )
+    return RedirectResponse(url=destination, status_code=303)
 
 
 @router.get("/chart-of-accounts", response_class=HTMLResponse, name="chart_of_accounts")

@@ -32,7 +32,7 @@ const table = new Tabulator('#transactions-table', {
         {title: 'Debit', field: 'amount_cents', hozAlign: 'right', formatter: debitFormatter},
         {title: 'Credit', field: 'amount_cents', hozAlign: 'right', formatter: creditFormatter},
         {title: 'Reference', field: 'posting_reference'},
-        {title: '', field: 'transaction_id', width: 70, formatter: (cell) => `<a class="table-action" href="/transactions/${cell.getValue()}/edit">Edit</a>`},
+        {title: '', field: 'transaction_id', width: 70, formatter: (cell) => `<a class="table-action" href="/transactions/${cell.getValue()}/edit?return_to=${encodeURIComponent(window.location.href)}">Edit</a>`},
     ],
     data: []
 });
@@ -51,6 +51,7 @@ async function queryTransactions() {
     const params = new URLSearchParams({business_id: business.value, days: document.getElementById('days').value || '30'});
     const fields = {account_number: account.value, entry_type: document.getElementById('entry-type').value, amount_min: document.getElementById('amount-min').value, amount_max: document.getElementById('amount-max').value, date_from: document.getElementById('date-from').value, date_to: document.getElementById('date-to').value};
     Object.entries(fields).forEach(([key, value]) => { if (value) params.set(key, value); });
+    window.history.replaceState({}, '', `/transactions?${params}`);
     status.textContent = 'Loading transactions…';
     const response = await fetch(`/api/transactions?${params}`);
     if (!response.ok) { status.textContent = 'Unable to load transactions.'; return; }
