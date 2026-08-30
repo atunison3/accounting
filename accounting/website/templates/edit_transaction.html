@@ -11,7 +11,7 @@
 <div><label for="edit-user">Updated by user ID</label><input id="edit-user" name="user_id" type="number" min="1" required></div>
 <div class="full"><label for="edit-description">Description</label><input id="edit-description" name="description" value="{{ transaction.description }}" required></div>
 <div class="full"><label>Transaction lines</label><div id="edit-lines">{% for line, account in line_data %}<div class="line-row"><input name="account_numbers" type="number" min="1" value="{{ account.account_number if account else '' }}" required><input name="amounts" type="number" min="0" step="0.01" value="{{ '%.2f'|format(line.amount_cents / 100) }}" required><select name="line_types"><option value="debit" {% if line.is_debit %}selected{% endif %}>Debit</option><option value="credit" {% if not line.is_debit %}selected{% endif %}>Credit</option></select><span class="account-result">{{ account.account_name if account else 'Account unavailable' }}</span></div>{% endfor %}</div></div>
-<div class="full actions"><button class="button primary" type="submit">Save transaction</button><a class="button secondary" href="{{ return_to }}">Cancel</a></div>
+<div class="full actions"><button class="button primary" type="submit">Save transaction</button><a class="button secondary" href="{{ return_to }}">Cancel</a><a class="button secondary" href="{{ url_for('upload_document') }}?business_id={{ transaction.business_id }}&amp;transaction_id={{ transaction.id }}">Attach document</a></div>
 </form>
 </section>
 {% endblock %}

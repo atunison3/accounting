@@ -64,6 +64,16 @@ def _optional_date(value: str | None) -> date | None:
     return date.fromisoformat(value) if value and value.strip() else None
 
 
+def _optional_bool(value: str | None) -> bool | None:
+    if not value or not value.strip():
+        return None
+    if value.lower() in {"true", "yes", "1"}:
+        return True
+    if value.lower() in {"false", "no", "0"}:
+        return False
+    raise ValueError("Document filter must be true or false.")
+
+
 def _miles_to_tenths(value: Decimal) -> int:
     exponent = value.as_tuple().exponent
     if not value.is_finite() or value < 0 or not isinstance(exponent, int) or exponent < -1:
@@ -195,13 +205,23 @@ def dashboard(request: Request) -> HTMLResponse:
 
 
 @router.get("/documents/upload", response_class=HTMLResponse, name="upload_document")
-def upload_document(request: Request) -> HTMLResponse:
+def upload_document(
+    request: Request,
+    business_id: int | None = None,
+    transaction_id: int | None = None,
+) -> HTMLResponse:
     with get_connection(_database_path(request)) as connection:
         businesses = SqliteBusinessRepository(connection).get_all()
     return templates.TemplateResponse(
         request=request,
         name="upload_document.html",
-        context={"page_title": "Upload document", "businesses": businesses, "error": None},
+        context={
+            "page_title": "Upload document",
+            "businesses": businesses,
+            "selected_business_id": business_id,
+            "selected_transaction_id": transaction_id,
+            "error": None,
+        },
     )
 
 
@@ -266,7 +286,13 @@ def upload_document_form(  # noqa: PLR0913, PLR0917
         return templates.TemplateResponse(
             request=request,
             name="upload_document.html",
-            context={"page_title": "Upload document", "businesses": businesses, "error": str(exc)},
+            context={
+                "page_title": "Upload document",
+                "businesses": businesses,
+                "selected_business_id": business_id,
+                "selected_transaction_id": transaction_id,
+                "error": str(exc),
+            },
             status_code=400,
         )
     return RedirectResponse(url="/dashboard?message=Document%20uploaded%20and%20linked", status_code=303)
@@ -326,6 +352,8 @@ def transactions_dashboard(  # noqa: PLR0913, PLR0917
     amount_max: str | None = None,
     date_from: str | None = None,
     date_to: str | None = None,
+    currency_code: str | None = None,
+    has_document: str | None = None,
     days: int = 30,
 ) -> HTMLResponse:
     LOGGER.debug("Rendering transactions dashboard business_id=%s", business_id)
@@ -337,6 +365,8 @@ def transactions_dashboard(  # noqa: PLR0913, PLR0917
         selected_account = _optional_int(account_number)
         selected_amount_min = _optional_decimal(amount_min)
         selected_amount_max = _optional_decimal(amount_max)
+        selected_currency = currency_code.strip().upper() if currency_code and currency_code.strip() else None
+        selected_has_document = _optional_bool(has_document)
         selected_date_from = _optional_date(date_from)
         selected_date_to = _optional_date(date_to)
         if days < 1:
@@ -364,6 +394,8 @@ def transactions_dashboard(  # noqa: PLR0913, PLR0917
                     ),
                     date_from=selected_date_from,
                     date_to=selected_date_to,
+                    currency_code=selected_currency,
+                    has_document=selected_has_document,
                 )
     except Exception as exc:
         LOGGER.exception("Transaction dashboard query failed")
@@ -406,6 +438,8 @@ def api_transactions(  # noqa: PLR0913, PLR0917
     amount_max: str | None = None,
     date_from: str | None = None,
     date_to: str | None = None,
+    currency_code: str | None = None,
+    has_document: bool | None = None,
     days: int = 30,
 ) -> JSONResponse:
     """Return filtered transaction lines for Tabulator's remote data source."""
@@ -425,6 +459,8 @@ def api_transactions(  # noqa: PLR0913, PLR0917
             max_amount_cents=_dollars_to_cents(max_amount) if max_amount is not None else None,
             date_from=selected_date_from,
             date_to=selected_date_to,
+            currency_code=currency_code.upper() if currency_code else None,
+            has_document=has_document,
         )
     return JSONResponse([result.model_dump(mode="json") for result in results])
 

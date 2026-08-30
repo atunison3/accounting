@@ -146,6 +146,7 @@ class TransactionEntry(BaseModel):
     account_name: str
     amount_cents: int
     is_debit: bool
+    has_document: bool = False
 
 
 class TAccountDisplay(BaseModel):

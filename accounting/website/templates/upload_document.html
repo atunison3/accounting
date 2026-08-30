@@ -5,8 +5,8 @@
 {% if error %}<div class="notice error" role="alert">{{ error }}</div>{% endif %}
 <form method="post" action="{{ url_for('upload_document_form') }}" enctype="multipart/form-data">
     <label for="document-file">Document file</label><input id="document-file" name="document_file" type="file" required>
-    <label for="document-business">Business</label><select id="document-business" name="business_id" required><option value="">Select a business</option>{% for business in businesses %}<option value="{{ business.id }}">{{ business.title }} (ID {{ business.id }})</option>{% endfor %}</select>
-    <label for="document-transaction">Transaction ID</label><input id="document-transaction" name="transaction_id" type="number" min="1" required>
+    <label for="document-business">Business</label><select id="document-business" name="business_id" required><option value="">Select a business</option>{% for business in businesses %}<option value="{{ business.id }}"{% if business.id == selected_business_id %} selected{% endif %}>{{ business.title }} (ID {{ business.id }})</option>{% endfor %}</select>
+    <label for="document-transaction">Transaction ID</label><input id="document-transaction" name="transaction_id" type="number" min="1" value="{{ selected_transaction_id or '' }}" required>
     <label for="document-type">Document type</label><input id="document-type" name="document_type" placeholder="Receipt or invoice" required>
     <label for="document-date">Document date</label><input id="document-date" name="document_date" type="date" required>
     <label for="document-title">Title <span>(optional)</span></label><input id="document-title" name="title">

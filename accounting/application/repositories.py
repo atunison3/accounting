@@ -47,6 +47,8 @@ class TransactionRepository:
         max_amount_cents: int | None = None,
         date_from: date | None = None,
         date_to: date | None = None,
+        currency_code: str | None = None,
+        has_document: bool | None = None,
     ) -> list[TransactionEntry]:
         raise NotImplementedError
 

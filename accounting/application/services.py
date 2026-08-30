@@ -97,6 +97,8 @@ class AccountingService:
         max_amount_cents: int | None = None,
         date_from: date | None = None,
         date_to: date | None = None,
+        currency_code: str | None = None,
+        has_document: bool | None = None,
     ) -> list[TransactionEntry]:
         return self.repository.search(
             business_id,
@@ -106,6 +108,8 @@ class AccountingService:
             max_amount_cents,
             date_from,
             date_to,
+            currency_code,
+            has_document,
         )
 
     def get_transaction(self, transaction_id: int) -> AccountingTransaction | None:
