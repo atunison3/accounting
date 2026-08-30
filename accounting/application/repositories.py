@@ -99,6 +99,18 @@ class MileageRepository:
     def get_by_id(self, mileage_id: int) -> Mileage | None:
         raise NotImplementedError
 
+    def search(
+        self,
+        business_id: int,
+        date_from: date | None = None,
+        date_to: date | None = None,
+        vehicle: str | None = None,
+    ) -> list[dict[str, object]]:
+        raise NotImplementedError
+
+    def summary(self, business_id: int, year: int) -> tuple[int, int, int]:
+        raise NotImplementedError
+
 
 class DocumentRepository:
     def add(self, document: Document) -> int:

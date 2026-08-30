@@ -83,6 +83,8 @@ h2 { line-height: 1.15; letter-spacing: -.03em; }
 .chart-tooltip { background: var(--ink); border-radius: 6px; color: var(--white); font-size: .85rem; padding: 9px 12px; pointer-events: none; position: fixed; visibility: hidden; z-index: 10; }
 .chart-tooltip span { color: #bce4de; font-weight: 700; }
 .metric-card strong { color: var(--accent-dark); display: block; font-size: 2.8rem; line-height: 1.1; margin: 18px 0 8px; }
+.mileage-metrics { display: grid; gap: 22px; grid-template-columns: repeat(2, 1fr); margin-bottom: 22px; }
+@media (max-width: 700px) { .mileage-metrics { grid-template-columns: 1fr; } }
 .metric-card p { color: var(--muted); margin: 0; }
 .analytics-grid .chart-wide { grid-column: 1 / -1; }
 .analytics-grid:fullscreen { background: var(--paper); height: 100vh; margin: 0; overflow: auto; padding: 6vh 8vw; width: 100vw; }

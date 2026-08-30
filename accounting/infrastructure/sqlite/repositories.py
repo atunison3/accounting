@@ -383,6 +383,52 @@ class SqliteMileageRepository(MileageRepository):
         row = cur.fetchone()
         return _row_to_mileage(row) if row else None
 
+    def search(
+        self,
+        business_id: int,
+        date_from: date | None = None,
+        date_to: date | None = None,
+        vehicle: str | None = None,
+    ) -> list[dict[str, object]]:
+        cur = self._conn.cursor()
+        _execute(
+            cur,
+            """
+            SELECT m.id, m.miles_date, m.tenth_miles, m.explanation, m.vehicle,
+                   CASE WHEN EXISTS (
+                       SELECT 1 FROM mileage_documents AS md
+                       WHERE md.mileage_id = m.id AND md.deleted_at IS NULL
+                   ) THEN 1 ELSE 0 END AS has_document
+            FROM miles AS m
+            WHERE m.business_id = ? AND m.deleted_at IS NULL
+              AND (? IS NULL OR m.miles_date >= ?)
+              AND (? IS NULL OR m.miles_date <= ?)
+              AND (? IS NULL OR m.vehicle = ?)
+            ORDER BY m.miles_date DESC, m.id DESC
+            """,
+            (business_id, date_from, date_from, date_to, date_to, vehicle, vehicle),
+        )
+        return [dict(row) for row in cur.fetchall()]
+
+    def summary(self, business_id: int, year: int) -> tuple[int, int, int]:
+        cur = self._conn.cursor()
+        _execute(
+            cur,
+            """
+            SELECT COUNT(*) AS total, COALESCE(SUM(m.tenth_miles), 0) AS tenths,
+                   COALESCE(SUM(CASE WHEN NOT EXISTS (
+                       SELECT 1 FROM mileage_documents AS md
+                       WHERE md.mileage_id = m.id AND md.deleted_at IS NULL
+                   ) THEN 1 ELSE 0 END), 0) AS without_documents
+            FROM miles AS m
+            WHERE m.business_id = ? AND m.deleted_at IS NULL
+              AND m.miles_date >= ? AND m.miles_date <= ?
+            """,
+            (business_id, f"{year:04d}-01-01", f"{year:04d}-12-31"),
+        )
+        row = cur.fetchone()
+        return int(row["tenths"]), int(row["total"]), int(row["without_documents"])
+
 
 class SqliteAccountRepository(AccountRepository):
     def __init__(self, conn: sqlite3.Connection) -> None:

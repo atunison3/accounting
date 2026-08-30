@@ -219,6 +219,16 @@ CREATE TABLE IF NOT EXISTS accounting_transaction_documents (
     deleted_by INTEGER REFERENCES users(id)
 );
 
+CREATE TABLE IF NOT EXISTS mileage_documents (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    mileage_id INTEGER NOT NULL REFERENCES miles(id),
+    document_id INTEGER NOT NULL REFERENCES documents(id),
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by INTEGER NOT NULL REFERENCES users(id),
+    deleted_at TEXT,
+    deleted_by INTEGER REFERENCES users(id)
+);
+
 CREATE TABLE IF NOT EXISTS transaction_lines (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     transaction_id  INTEGER NOT NULL,

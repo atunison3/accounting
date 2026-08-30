@@ -6,6 +6,7 @@ import re
 import uuid
 from io import BytesIO
 from pathlib import Path
+from typing import cast
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
@@ -296,6 +297,70 @@ def upload_document_form(  # noqa: PLR0913, PLR0917
             status_code=400,
         )
     return RedirectResponse(url="/dashboard?message=Document%20uploaded%20and%20linked", status_code=303)
+
+
+@router.get("/mileage", response_class=HTMLResponse, name="mileage_dashboard")
+def mileage_dashboard(request: Request, business_id: int | None = None, year: int | None = None) -> HTMLResponse:
+    with get_connection(_database_path(request)) as connection:
+        businesses = SqliteBusinessRepository(connection).get_all()
+        vehicles = []
+        summary = {"total_miles": 0.0, "without_document_percentage": 0.0}
+        if business_id is not None:
+            mileage_repository = SqliteMileageRepository(connection)
+            vehicles = sorted({str(row["vehicle"]) for row in mileage_repository.search(business_id) if row["vehicle"]})
+            selected_year = year or date.today().year
+            tenths, total, without_documents = mileage_repository.summary(business_id, selected_year)
+            summary = {
+                "total_miles": tenths / 10,
+                "without_document_percentage": round(without_documents / total * 100, 2) if total else 0.0,
+            }
+    return templates.TemplateResponse(
+        request=request,
+        name="mileage.html",
+        context={
+            "page_title": "Mileage",
+            "businesses": businesses,
+            "vehicles": vehicles,
+            "summary": summary,
+            "year": year or date.today().year,
+            "selected_business_id": business_id,
+        },
+    )
+
+
+@router.get("/api/mileage", name="api_mileage")
+def api_mileage(
+    request: Request,
+    business_id: int,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    vehicle: str | None = None,
+) -> JSONResponse:
+    with get_connection(_database_path(request)) as connection:
+        rows = SqliteMileageRepository(connection).search(
+            business_id,
+            _optional_date(date_from),
+            _optional_date(date_to),
+            vehicle or None,
+        )
+    for row in rows:
+        row["miles"] = cast(int, row.pop("tenth_miles")) / 10
+        row["date"] = row.pop("miles_date")
+    return JSONResponse(rows)
+
+
+@router.get("/api/mileage/summary", name="api_mileage_summary")
+def api_mileage_summary(request: Request, business_id: int, year: int | None = None) -> JSONResponse:
+    selected_year = year or date.today().year
+    with get_connection(_database_path(request)) as connection:
+        tenths, total, without_documents = SqliteMileageRepository(connection).summary(business_id, selected_year)
+    return JSONResponse(
+        {
+            "year": selected_year,
+            "total_miles": tenths / 10,
+            "without_document_percentage": round(without_documents / total * 100, 2) if total else 0.0,
+        }
+    )
 
 
 @router.get("/analytics", response_class=HTMLResponse, name="analytics_dashboard")
