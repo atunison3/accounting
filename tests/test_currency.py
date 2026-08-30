@@ -2,6 +2,7 @@ import unittest
 from datetime import date
 
 from accounting.application.services import AccountingService
+from accounting.domain.currency import convert_currency
 from pydantic import ValidationError
 
 from accounting.domain.models import (
@@ -81,6 +82,11 @@ class TestTransactionCurrency(unittest.TestCase):
         if transaction is None:
             self.fail("Transaction was not persisted")
         self.assertEqual(transaction.currency_code, "EUR")
+
+    def test_thai_baht_converts_to_usd_and_legacy_alias_is_supported(self) -> None:
+        self.assertEqual(convert_currency(3300, "THB"), 100)
+        self.assertEqual(convert_currency(100, "USD", "THB"), 3300)
+        self.assertEqual(convert_currency(3300, "TBH"), 100)
 
     def test_currency_code_must_be_three_uppercase_letters(self) -> None:
         with self.assertRaises(ValidationError):

@@ -79,9 +79,11 @@ h2 { line-height: 1.15; letter-spacing: -.03em; }
 .chart-title { text-align: center; }
 .chart-toolbar { align-items: center; display: flex; justify-content: space-between; margin-bottom: 12px; }
 .chart-toolbar h2 { margin: 0; }
-#equity-chart-panel:fullscreen { background: var(--white); border: 0; border-radius: 0; height: 100vh; margin: 0; overflow: auto; padding: 6vh 8vw; width: 100vw; }
-#equity-chart-panel:fullscreen #equity-chart { min-height: 75vh; }
-#equity-chart svg { display: block; height: auto; max-width: 100%; }
+.analytics-grid { display: grid; gap: 22px; grid-template-columns: repeat(2, minmax(0, 1fr)); padding-bottom: 80px; }
+.analytics-grid .chart-wide { grid-column: 1 / -1; }
+.analytics-grid:fullscreen { background: var(--paper); height: 100vh; margin: 0; overflow: auto; padding: 6vh 8vw; width: 100vw; }
+#equity-chart svg, #cash-chart svg, #performance-chart svg { display: block; height: auto; max-width: 100%; }
+@media (max-width: 800px) { .analytics-grid { grid-template-columns: 1fr; } .analytics-grid .chart-wide { grid-column: auto; } }
 .chart-title h2 { font-size: 1.5rem; margin: 0; }
 .chart-title h3 { font-size: 1.15rem; margin: 4px 0 22px; }
 .chart-actions { display: flex; gap: 10px; justify-content: flex-end; margin-bottom: 14px; }

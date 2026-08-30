@@ -207,6 +207,22 @@ def api_equity_analytics(request: Request, business_id: int) -> JSONResponse:
     return JSONResponse(points)
 
 
+@router.get("/api/analytics/overview", name="api_analytics_overview")
+def api_analytics_overview(request: Request, business_id: int) -> JSONResponse:
+    """Return the chart series used by the business analytics dashboard."""
+    with get_connection(_database_path(request)) as connection:
+        analytics = AnalyticsService(
+            SqliteTransactionRepository(connection),
+            SqliteAccountRepository(connection),
+        )
+        data = {
+            "equity": analytics.owner_equity_over_time(business_id),
+            "revenue_expenses": analytics.revenue_and_expenses_over_time(business_id),
+            "cash": analytics.cash_balance_over_time(business_id),
+        }
+    return JSONResponse(data)
+
+
 @router.get("/transactions", response_class=HTMLResponse, name="transactions_dashboard")
 def transactions_dashboard(  # noqa: PLR0913, PLR0917
     request: Request,

@@ -130,30 +130,67 @@ class AnalyticsService:
         self.transaction_repository = transaction_repository
         self.account_repository = account_repository
 
-    def owner_equity_over_time(self, business_id: int) -> list[dict[str, int | str]]:
-        """Return cumulative owner-equity balances converted to USD cents."""
+    def _business_accounts_and_entries(self, business_id: int) -> tuple[dict[int, Account], list[Any]]:
         accounts = {
-            account.account_number: account
-            for account in self.account_repository.get_for_business(business_id)
-            if account.account_type == AccountType.EQUITY
+            account.account_number: account for account in self.account_repository.get_for_business(business_id)
         }
         entries = self.transaction_repository.search(business_id, None, None, None, None, None, None)
+        return accounts, entries
+
+    def owner_equity_over_time(self, business_id: int) -> list[dict[str, int | str]]:
+        """Return cumulative owner-equity balances converted to USD cents."""
+        accounts, entries = self._business_accounts_and_entries(business_id)
         daily_changes: dict[str, int] = {}
         for entry in entries:
             account = accounts.get(entry.account_number)
-            if account is None:
+            if account is None or account.account_type != AccountType.EQUITY:
                 continue
             amount = convert_currency(entry.amount_cents, entry.currency_code)
-            # Equity normally has a credit balance; honor the account's normal balance.
             change = amount if entry.is_debit == account.is_debit else -amount
             day = entry.transaction_date.isoformat()
             daily_changes[day] = daily_changes.get(day, 0) + change
+        return self._cumulative_series(daily_changes, "equity_usd_cents")
 
+    def revenue_and_expenses_over_time(self, business_id: int) -> list[dict[str, int | str]]:
+        """Return daily revenue and expense activity converted to USD cents."""
+        accounts, entries = self._business_accounts_and_entries(business_id)
+        daily: dict[str, dict[str, int]] = {}
+        for entry in entries:
+            account = accounts.get(entry.account_number)
+            if account is None or account.account_type not in {AccountType.REVENUE, AccountType.EXPENSE}:
+                continue
+            day = entry.transaction_date.isoformat()
+            values = daily.setdefault(day, {"revenue_usd_cents": 0, "expenses_usd_cents": 0})
+            key = "revenue_usd_cents" if account.account_type == AccountType.REVENUE else "expenses_usd_cents"
+            amount = convert_currency(entry.amount_cents, entry.currency_code)
+            values[key] += amount if entry.is_debit == account.is_debit else -amount
+        return [{"date": day, **daily[day]} for day in sorted(daily)]
+
+    def cash_balance_over_time(self, business_id: int) -> list[dict[str, int | str]]:
+        """Return cumulative cash and bank balances converted to USD cents."""
+        accounts, entries = self._business_accounts_and_entries(business_id)
+        cash_accounts = {
+            number
+            for number, account in accounts.items()
+            if account.account_type == AccountType.ASSET
+            and any(word in account.account_name.lower() for word in ("cash", "bank", "checking", "savings"))
+        }
+        daily_changes: dict[str, int] = {}
+        for entry in entries:
+            if entry.account_number not in cash_accounts:
+                continue
+            amount = convert_currency(entry.amount_cents, entry.currency_code)
+            day = entry.transaction_date.isoformat()
+            daily_changes[day] = daily_changes.get(day, 0) + (amount if entry.is_debit else -amount)
+        return self._cumulative_series(daily_changes, "cash_usd_cents")
+
+    @staticmethod
+    def _cumulative_series(changes: dict[str, int], value_key: str) -> list[dict[str, int | str]]:
         balance = 0
         points: list[dict[str, int | str]] = []
-        for day in sorted(daily_changes):
-            balance += daily_changes[day]
-            points.append({"date": day, "equity_usd_cents": balance})
+        for day in sorted(changes):
+            balance += changes[day]
+            points.append({"date": day, value_key: balance})
         return points
 
 

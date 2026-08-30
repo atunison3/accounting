@@ -14,6 +14,9 @@ def convert_currency(amount_cents: int, from_currency: str, to_currency: str = "
     """
     source = from_currency.upper()
     target = to_currency.upper()
+    # TBH was used by an earlier website form; retain it as a legacy alias.
+    source = "THB" if source == "TBH" else source
+    target = "THB" if target == "TBH" else target
     if source == target:
         return amount_cents
     if {source, target} != {"USD", "THB"}:

@@ -1,55 +1,69 @@
 {% extends "base.html" %}
 {% block content %}
-<section class="page-heading"><p class="eyebrow">REPORTING</p><h1>Business analytics</h1><p class="lead">Track cumulative owner's equity over time. Every supported transaction is converted to USD before calculation.</p></section>
+<section class="page-heading"><p class="eyebrow">REPORTING</p><h1>Business analytics</h1><p class="lead">Explore cumulative equity, cash position, and operating performance. Every supported transaction is converted to USD before calculation.</p></section>
 <section class="selector-card">
     <label for="analytics-business">Business</label>
     <select id="analytics-business"><option value="">Select a business</option>{% for business in businesses %}<option value="{{ business.id }}"{% if business.id == selected_business_id %} selected{% endif %}>{{ business.title }}</option>{% endfor %}</select>
-    <p class="filter-status" id="analytics-status">Select a business to load the equity chart.</p>
+    <p class="filter-status" id="analytics-status">Select a business to load analytics.</p>
+    <button class="button secondary" id="fullscreen-analytics" type="button">Full screen</button>
 </section>
-<section class="table-card chart-card" id="equity-chart-panel"><div class="chart-toolbar"><h2>Owner's equity (USD)</h2><button class="button secondary" id="fullscreen-chart" type="button" aria-label="View equity chart full screen">Full screen</button></div><div id="equity-chart" aria-label="Owner's equity over time"></div></section>
+<section class="analytics-grid">
+    <article class="table-card chart-card"><h2>Owner's equity over time</h2><div id="equity-chart" aria-label="Owner's equity over time"></div></article>
+    <article class="table-card chart-card"><h2>Cash and bank balance</h2><div id="cash-chart" aria-label="Cash and bank balance over time"></div></article>
+    <article class="table-card chart-card chart-wide"><h2>Revenue versus expenses</h2><div id="performance-chart" aria-label="Revenue versus expenses over time"></div></article>
+</section>
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script>
 const businessSelect = document.getElementById('analytics-business');
-const chart = document.getElementById('equity-chart');
-const chartStatus = document.getElementById('analytics-status');
-let currentData = [];
-function renderEquity(data) {
-    currentData = data;
-    chart.innerHTML = '';
-    if (!data.length) { chartStatus.textContent = 'No equity transactions found for this business.'; return; }
-    const width = Math.max(chart.clientWidth, 640), height = 360;
-    const margin = {top: 24, right: 28, bottom: 55, left: 78};
-    const svg = d3.select(chart).append('svg').attr('viewBox', `0 0 ${width} ${height}`).attr('role', 'img');
-    const points = data.map(item => ({date: new Date(`${item.date}T00:00:00`), value: item.equity_usd_cents / 100}));
-    const x = d3.scaleTime().domain(d3.extent(points, d => d.date)).range([margin.left, width - margin.right]);
-    const extent = d3.extent(points, d => d.value);
+const status = document.getElementById('analytics-status');
+function money(value) { return `$${d3.format(',.0f')(value)}`; }
+function drawChart(id, data, series) {
+    const container = document.getElementById(id);
+    container.innerHTML = '';
+    if (!data.length) { container.textContent = 'No data available.'; return false; }
+    const width = Math.max(container.clientWidth, 520), height = 300;
+    const margin = {top: 18, right: 24, bottom: 48, left: 72};
+    const points = data.map(item => ({date: new Date(`${item.date}T00:00:00`), values: series.map(s => item[s.key] / 100)}));
+    const allValues = points.flatMap(point => point.values);
+    const extent = d3.extent(allValues);
     const padding = Math.max((extent[1] - extent[0]) * 0.1, 1);
+    const x = d3.scaleTime().domain(d3.extent(points, d => d.date)).range([margin.left, width - margin.right]);
     const y = d3.scaleLinear().domain([Math.min(0, extent[0] - padding), extent[1] + padding]).nice().range([height - margin.bottom, margin.top]);
-    svg.append('g').attr('transform', `translate(0,${height - margin.bottom})`).call(d3.axisBottom(x).ticks(Math.min(points.length, 8)).tickFormat(d3.timeFormat('%b %Y'))).selectAll('text').attr('transform', 'rotate(-25)').style('text-anchor', 'end');
-    svg.append('g').attr('transform', `translate(${margin.left},0)`).call(d3.axisLeft(y).tickFormat(value => `$${d3.format(',')(value)}`));
-    svg.append('path').datum(points).attr('fill', 'none').attr('stroke', '#2563eb').attr('stroke-width', 3).attr('d', d3.line().x(d => x(d.date)).y(d => y(d.value)));
-    svg.selectAll('circle').data(points).join('circle').attr('cx', d => x(d.date)).attr('cy', d => y(d.value)).attr('r', 4).attr('fill', '#2563eb').append('title').text(d => `${d3.timeFormat('%Y-%m-%d')(d.date)}: $${d3.format(',.2f')(d.value)}`);
-    chartStatus.textContent = `${data.length} equity balance point${data.length === 1 ? '' : 's'} · USD`;
+    const svg = d3.select(container).append('svg').attr('viewBox', `0 0 ${width} ${height}`).attr('role', 'img');
+    svg.append('g').attr('transform', `translate(0,${height - margin.bottom})`).call(d3.axisBottom(x).ticks(Math.min(points.length, 6)).tickFormat(d3.timeFormat('%b %Y'))).selectAll('text').attr('transform', 'rotate(-25)').style('text-anchor', 'end');
+    svg.append('g').attr('transform', `translate(${margin.left},0)`).call(d3.axisLeft(y).ticks(5).tickFormat(money));
+    const line = d3.line().x(point => x(point.date)).y(point => y(point.value));
+    series.forEach((item, index) => {
+        svg.append('path').datum(points.map(point => ({date: point.date, value: point.values[index]}))).attr('fill', 'none').attr('stroke', item.color).attr('stroke-width', 3).attr('d', line);
+    });
+    const legend = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+    series.forEach((item, index) => { const group = legend.append('g').attr('transform', `translate(${index * 150},0)`); group.append('circle').attr('r', 5).attr('fill', item.color); group.append('text').attr('x', 10).attr('y', 4).text(item.label); });
+    return true;
 }
-async function loadEquity() {
-    if (!businessSelect.value) { chart.innerHTML = ''; chartStatus.textContent = 'Select a business to load the equity chart.'; return; }
-    chartStatus.textContent = 'Loading equity analytics…';
-    const response = await fetch(`/api/analytics/equity?business_id=${businessSelect.value}`);
-    if (!response.ok) { chartStatus.textContent = 'Unable to load analytics.'; return; }
-    renderEquity(await response.json());
+async function loadAnalytics() {
+    if (!businessSelect.value) { status.textContent = 'Select a business to load analytics.'; return; }
+    status.textContent = 'Loading analytics…';
+    const response = await fetch(`/api/analytics/overview?business_id=${businessSelect.value}`);
+    if (!response.ok) { status.textContent = 'Unable to load analytics.'; return; }
+    const data = await response.json();
+    const charts = [
+        drawChart('equity-chart', data.equity, [{key: 'equity_usd_cents', label: 'Equity', color: '#2563eb'}]),
+        drawChart('cash-chart', data.cash, [{key: 'cash_usd_cents', label: 'Cash', color: '#087f70'}]),
+        drawChart('performance-chart', data.revenue_expenses, [{key: 'revenue_usd_cents', label: 'Revenue', color: '#16a34a'}, {key: 'expenses_usd_cents', label: 'Expenses', color: '#dc2626'}])
+    ];
+    status.textContent = charts.some(Boolean) ? 'Analytics shown in USD.' : 'No analytics data found for this business.';
     window.history.replaceState({}, '', `/analytics?business_id=${businessSelect.value}`);
 }
-businessSelect.addEventListener('change', loadEquity);
-const chartPanel = document.getElementById('equity-chart-panel');
-const fullscreenButton = document.getElementById('fullscreen-chart');
+businessSelect.addEventListener('change', loadAnalytics);
+const analyticsGrid = document.querySelector('.analytics-grid');
+const fullscreenButton = document.getElementById('fullscreen-analytics');
 fullscreenButton.addEventListener('click', async () => {
-    if (!document.fullscreenElement) await chartPanel.requestFullscreen();
+    if (!document.fullscreenElement) await analyticsGrid.requestFullscreen();
     else await document.exitFullscreen();
 });
 document.addEventListener('fullscreenchange', () => {
     fullscreenButton.textContent = document.fullscreenElement ? 'Exit full screen' : 'Full screen';
-    if (currentData.length) renderEquity(currentData);
 });
-if (businessSelect.value) loadEquity();
+if (businessSelect.value) loadAnalytics();
 </script>
 {% endblock %}
