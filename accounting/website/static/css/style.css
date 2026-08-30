@@ -30,12 +30,16 @@ h2 { line-height: 1.15; letter-spacing: -.03em; }
 .dashboard-card span { color: var(--accent); font-weight: 700; }
 .notice { border-left: 4px solid var(--accent); background: #e6f3f0; padding: 16px 20px; margin: 0 0 80px; color: var(--accent-dark); }
 .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; padding-bottom: 80px; }
+.form-grid .form-card.wide { order: -1; }
 .form-card { background: var(--white); border: 1px solid var(--line); border-radius: 10px; padding: 26px; }
 .form-card.wide { grid-column: 1 / -1; }
 .form-card form { display: grid; gap: 9px; margin-top: 22px; }
 .form-card label { font-weight: 700; margin-top: 5px; }
 .form-card label span { color: var(--muted); font-size: .85rem; font-weight: 400; }
 .form-card input, .form-card select { border: 1px solid var(--line); border-radius: 6px; font: inherit; padding: 10px; width: 100%; }
+/* Prevent trackpad scrolling from changing numeric form values. */
+.form-card input[type="number"]::-webkit-inner-spin-button, .form-card input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.form-card input[type="number"] { -moz-appearance: textfield; }
 .form-card input:focus, .form-card select:focus { border-color: var(--accent); outline: 2px solid #bce4de; }
 .form-card .button { justify-self: start; margin-top: 12px; }
 .transaction-form { grid-template-columns: repeat(2, 1fr); column-gap: 18px; }
