@@ -210,6 +210,7 @@ def upload_document(
     request: Request,
     business_id: int | None = None,
     transaction_id: int | None = None,
+    return_to: str | None = None,
 ) -> HTMLResponse:
     with get_connection(_database_path(request)) as connection:
         businesses = SqliteBusinessRepository(connection).get_all()
@@ -221,6 +222,7 @@ def upload_document(
             "businesses": businesses,
             "selected_business_id": business_id,
             "selected_transaction_id": transaction_id,
+            "return_to": return_to or "/transactions",
             "error": None,
         },
     )
@@ -237,6 +239,7 @@ def upload_document_form(  # noqa: PLR0913, PLR0917
     created_by: int = Form(...),
     title: str | None = Form(None),
     description: str | None = Form(None),
+    return_to: str | None = Form(None),
 ) -> HTMLResponse | RedirectResponse:
     stored_path: Path | None = None
     try:
@@ -292,11 +295,17 @@ def upload_document_form(  # noqa: PLR0913, PLR0917
                 "businesses": businesses,
                 "selected_business_id": business_id,
                 "selected_transaction_id": transaction_id,
+                "return_to": return_to or "/transactions",
                 "error": str(exc),
             },
             status_code=400,
         )
-    return RedirectResponse(url="/dashboard?message=Document%20uploaded%20and%20linked", status_code=303)
+    destination = (
+        return_to
+        if return_to and return_to.startswith("/") and not return_to.startswith("//")
+        else f"/transactions?business_id={business_id}&has_document=false"
+    )
+    return RedirectResponse(url=destination, status_code=303)
 
 
 @router.get("/mileage", response_class=HTMLResponse, name="mileage_dashboard")
@@ -871,8 +880,12 @@ def create_transaction_form(  # noqa: PLR0913, PLR0917
     line_types: list[str] = Form(...),  # noqa: B008
     user_id: int = Form(...),
     posting_reference: str | None = Form(None),
+    document_file: UploadFile | None = File(None),  # noqa: B008
+    document_type: str = Form("Supporting document"),  # noqa: B008
+    document_date: date | None = Form(None),  # noqa: B008
 ) -> HTMLResponse | RedirectResponse:
     LOGGER.debug("Creating transaction line_count=%s", len(account_numbers))
+    stored_path: Path | None = None
     try:
         if not (len(account_numbers) == len(amounts) == len(line_types)):
             raise ValueError("Each transaction line needs an account, amount, and type.")
@@ -895,17 +908,49 @@ def create_transaction_form(  # noqa: PLR0913, PLR0917
             for account_id, amount, line_type in zip(account_ids, amounts_cents, line_types, strict=True)
             if line_type in {"debit", "credit"}
         ]
+        posted_date = date.fromisoformat(transaction_date)
         with get_connection(_database_path(request)) as connection:
-            AccountingService(SqliteTransactionRepository(connection)).create_transaction(
+            transaction_repository = SqliteTransactionRepository(connection)
+            transaction_id = AccountingService(transaction_repository).create_transaction(
                 business_id=business_id,
-                transaction_date=date.fromisoformat(transaction_date),
+                transaction_date=posted_date,
                 currency_code=currency_code,
                 description=description,
                 posting_reference=posting_reference or None,
                 lines=lines,
                 user_id=user_id,
             )
+            if document_file is not None and document_file.filename:
+                content = document_file.file.read()
+                extension = re.sub(r"[^a-z0-9.]", "", Path(document_file.filename).suffix.lower())
+                stored_name = hashlib.sha256(uuid.uuid4().bytes + content).hexdigest() + extension
+                directory = DOCUMENTS_DIRECTORY / str(business_id)
+                directory.mkdir(parents=True, exist_ok=True)
+                stored_path = directory / stored_name
+                stored_path.write_bytes(content)
+                document_id = SqliteDocumentRepository(connection).add(
+                    Document(
+                        document_type=document_type,
+                        document_date=document_date or posted_date,
+                        title=document_file.filename,
+                        filename=document_file.filename,
+                        file_path=str(stored_path),
+                        mime_type=document_file.content_type,
+                        file_size_bytes=len(content),
+                        sha256_hash=hashlib.sha256(content).hexdigest(),
+                        created_by=user_id,
+                    )
+                )
+                SqliteTransactionDocumentRepository(connection).add(
+                    AccountingTransactionDocument(
+                        transaction_id=transaction_id,
+                        document_id=document_id,
+                        created_by=user_id,
+                    )
+                )
     except Exception as exc:
+        if stored_path is not None:
+            stored_path.unlink(missing_ok=True)
         LOGGER.exception("Transaction creation failed")
         return _dashboard(request, f"Could not add transaction: {exc}")
     LOGGER.debug("Transaction posted successfully")
