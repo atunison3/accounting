@@ -40,6 +40,7 @@ markdown-it-py==4.2.0
 MarkupSafe==3.0.3
 mdurl==0.1.2
 more-itertools==11.1.0
+mcp>=1.0
 mypy==2.3.0
 mypy_extensions==1.1.0
 nodeenv==1.10.0

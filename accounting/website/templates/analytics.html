@@ -7,6 +7,7 @@
     <p class="filter-status" id="analytics-status">Select a business to load analytics.</p>
     <button class="button secondary" id="fullscreen-analytics" type="button">Full screen</button>
 </section>
+<div id="chart-tooltip" class="chart-tooltip" role="status"></div>
 <section class="analytics-grid">
     <article class="table-card metric-card"><h2>Transactions without documents</h2><strong id="document-percentage">—</strong><p id="document-detail">Select a business to calculate coverage.</p></article>
     <article class="table-card chart-card"><h2>Owner's equity over time</h2><div id="equity-chart" aria-label="Owner's equity over time"></div></article>
@@ -31,13 +32,18 @@ function drawChart(id, data, series) {
     const x = d3.scaleTime().domain(d3.extent(points, d => d.date)).range([margin.left, width - margin.right]);
     const y = d3.scaleLinear().domain([Math.min(0, extent[0] - padding), extent[1] + padding]).nice().range([height - margin.bottom, margin.top]);
     const svg = d3.select(container).append('svg').attr('viewBox', `0 0 ${width} ${height}`).attr('role', 'img');
+    const tooltip = d3.select('#chart-tooltip');
     svg.append('g').attr('transform', `translate(0,${height - margin.bottom})`).call(d3.axisBottom(x).ticks(Math.min(points.length, 6)).tickFormat(d3.timeFormat('%b %Y'))).selectAll('text').attr('transform', 'rotate(-25)').style('text-anchor', 'end');
     svg.append('g').attr('transform', `translate(${margin.left},0)`).call(d3.axisLeft(y).ticks(5).tickFormat(money));
     const line = d3.line().x(point => x(point.date)).y(point => y(point.value));
     series.forEach((item, index) => {
         const seriesPoints = points.map(point => ({date: point.date, value: point.values[index]}));
         svg.append('path').datum(seriesPoints).attr('fill', 'none').attr('stroke', item.color).attr('stroke-width', 3).attr('d', line);
-        svg.selectAll(`.point-${index}`).data(seriesPoints).join('circle').attr('class', `point-${index}`).attr('cx', point => x(point.date)).attr('cy', point => y(point.value)).attr('r', 3).attr('fill', item.color).append('title').text(point => `${item.label} (${d3.timeFormat('%Y-%m-%d')(point.date)}): $${d3.format(',.2f')(point.value)}`);
+        const dots = svg.selectAll(`.point-${index}`).data(seriesPoints).join('circle').attr('class', `point-${index}`).attr('cx', point => x(point.date)).attr('cy', point => y(point.value)).attr('r', 4).attr('fill', item.color);
+        dots.append('title').text(point => `${item.label} (${d3.timeFormat('%Y-%m-%d')(point.date)}): $${d3.format(',.2f')(point.value)}`);
+        dots.on('mouseenter', (event, point) => tooltip.style('visibility', 'visible').html(`<strong>${item.label}</strong><br>${d3.timeFormat('%B %-d, %Y')(point.date)}<br><span>$${d3.format(',.2f')(point.value)} USD</span>`))
+            .on('mousemove', event => tooltip.style('left', `${event.pageX + 12}px`).style('top', `${event.pageY - 42}px`))
+            .on('mouseleave', () => tooltip.style('visibility', 'hidden'));
     });
     const legend = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
     series.forEach((item, index) => { const group = legend.append('g').attr('transform', `translate(${index * 150},0)`); group.append('circle').attr('r', 5).attr('fill', item.color); group.append('text').attr('x', 10).attr('y', 4).text(item.label); });
