@@ -1,16 +1,27 @@
 from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
+import hashlib
 import logging
 import re
+import uuid
 from io import BytesIO
 from pathlib import Path
 
-from fastapi import APIRouter, Form, HTTPException, Request
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 
 from accounting.application.services import AccountService, AccountingService, AnalyticsService, MileageService
-from accounting.domain.models import Account, AccountType, Business, Mileage, TransactionLine, User
+from accounting.domain.models import (
+    Account,
+    AccountType,
+    AccountingTransactionDocument,
+    Business,
+    Document,
+    Mileage,
+    TransactionLine,
+    User,
+)
 from accounting.infrastructure.sqlite.connection import DEFAULT_DATABASE_PATH, get_connection
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
@@ -21,7 +32,9 @@ from reportlab.platypus import SimpleDocTemplate, Spacer, Table, TableStyle, Par
 from accounting.infrastructure.sqlite.repositories import (
     SqliteAccountRepository,
     SqliteBusinessRepository,
+    SqliteDocumentRepository,
     SqliteMileageRepository,
+    SqliteTransactionDocumentRepository,
     SqliteTransactionRepository,
     SqliteUserRepository,
 )
@@ -32,6 +45,7 @@ TEMPLATE_DIR = PACKAGE_DIR / "templates"
 router = APIRouter()
 templates = Jinja2Templates(directory=TEMPLATE_DIR)
 LOGGER = logging.getLogger("accounting.api.website.routes")
+DOCUMENTS_DIRECTORY = Path.home() / ".app_data" / "accounting" / "documents"
 
 
 def _database_path(request: Request) -> str | Path:
@@ -178,6 +192,84 @@ def about(request: Request) -> HTMLResponse:
 def dashboard(request: Request) -> HTMLResponse:
     LOGGER.debug("Rendering dashboard page")
     return _dashboard(request)
+
+
+@router.get("/documents/upload", response_class=HTMLResponse, name="upload_document")
+def upload_document(request: Request) -> HTMLResponse:
+    with get_connection(_database_path(request)) as connection:
+        businesses = SqliteBusinessRepository(connection).get_all()
+    return templates.TemplateResponse(
+        request=request,
+        name="upload_document.html",
+        context={"page_title": "Upload document", "businesses": businesses, "error": None},
+    )
+
+
+@router.post("/documents/upload", response_class=HTMLResponse, response_model=None, name="upload_document_form")
+def upload_document_form(  # noqa: PLR0913, PLR0917
+    request: Request,
+    document_file: UploadFile = File(...),  # noqa: B008
+    business_id: int = Form(...),
+    transaction_id: int = Form(...),
+    document_type: str = Form(...),
+    document_date: date = Form(...),  # noqa: B008
+    created_by: int = Form(...),
+    title: str | None = Form(None),
+    description: str | None = Form(None),
+) -> HTMLResponse | RedirectResponse:
+    stored_path: Path | None = None
+    try:
+        if not document_file.filename:
+            raise ValueError("A document file is required.")
+        with get_connection(_database_path(request)) as connection:
+            business = SqliteBusinessRepository(connection).get_by_id(business_id)
+            transaction = SqliteTransactionRepository(connection).get_by_id(transaction_id)
+            if business is None:
+                raise ValueError("Business not found.")
+            if transaction is None or transaction.business_id != business_id:
+                raise ValueError("Transaction not found for this business.")
+
+            content = document_file.file.read()
+            extension = Path(document_file.filename).suffix.lower()
+            extension = re.sub(r"[^a-z0-9.]", "", extension)
+            stored_name = hashlib.sha256(uuid.uuid4().bytes + content).hexdigest() + extension
+            directory = DOCUMENTS_DIRECTORY / str(business_id)
+            directory.mkdir(parents=True, exist_ok=True)
+            stored_path = directory / stored_name
+            stored_path.write_bytes(content)
+            document = Document(
+                document_type=document_type,
+                document_date=document_date,
+                title=title or None,
+                description=description or None,
+                filename=document_file.filename,
+                file_path=str(stored_path),
+                mime_type=document_file.content_type,
+                file_size_bytes=len(content),
+                sha256_hash=hashlib.sha256(content).hexdigest(),
+                created_by=created_by,
+            )
+            document_id = SqliteDocumentRepository(connection).add(document)
+            SqliteTransactionDocumentRepository(connection).add(
+                AccountingTransactionDocument(
+                    transaction_id=transaction_id,
+                    document_id=document_id,
+                    created_by=created_by,
+                )
+            )
+    except Exception as exc:
+        if stored_path is not None:
+            stored_path.unlink(missing_ok=True)
+        LOGGER.exception("Document upload failed business_id=%s transaction_id=%s", business_id, transaction_id)
+        with get_connection(_database_path(request)) as connection:
+            businesses = SqliteBusinessRepository(connection).get_all()
+        return templates.TemplateResponse(
+            request=request,
+            name="upload_document.html",
+            context={"page_title": "Upload document", "businesses": businesses, "error": str(exc)},
+            status_code=400,
+        )
+    return RedirectResponse(url="/dashboard?message=Document%20uploaded%20and%20linked", status_code=303)
 
 
 @router.get("/analytics", response_class=HTMLResponse, name="analytics_dashboard")

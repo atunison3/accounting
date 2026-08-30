@@ -9,7 +9,9 @@ from accounting.domain.models import (
     Account,
     AccountType,
     AccountingTransaction,
+    AccountingTransactionDocument,
     Business,
+    Document,
     Mileage,
     TransactionLine,
     TransactionEntry,
@@ -78,6 +80,27 @@ def _row_to_business(row: sqlite3.Row) -> Business:
         is_business_active=_int_to_bool(row["is_business_active"]),
         established=row["established"],
         tax_year_end_month=row["tax_year_end_month"],
+        created_at=row["created_at"],
+        created_by=row["created_by"],
+        updated_at=row["updated_at"],
+        updated_by=row["updated_by"],
+        deleted_at=row["deleted_at"],
+        deleted_by=row["deleted_by"],
+    )
+
+
+def _row_to_document(row: sqlite3.Row) -> Document:
+    return Document(
+        id=row["id"],
+        document_type=row["document_type"],
+        document_date=row["document_date"],
+        title=row["title"],
+        description=row["description"],
+        filename=row["filename"],
+        file_path=row["file_path"],
+        mime_type=row["mime_type"],
+        file_size_bytes=row["file_size_bytes"],
+        sha256_hash=row["sha256_hash"],
         created_at=row["created_at"],
         created_by=row["created_by"],
         updated_at=row["updated_at"],
@@ -254,6 +277,70 @@ class SqliteBusinessRepository(BusinessRepository):
         cur = self._conn.cursor()
         _execute(cur, "SELECT * FROM businesses WHERE deleted_at IS NULL ORDER BY title")
         return [_row_to_business(row) for row in cur.fetchall()]
+
+
+class SqliteDocumentRepository:
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._conn = conn
+
+    def add(self, document: Document) -> int:
+        now = _utcnow()
+        cur = self._conn.cursor()
+        _execute(
+            cur,
+            """
+            INSERT INTO documents (
+                document_type, document_date, title, description, filename, file_path,
+                mime_type, file_size_bytes, sha256_hash, created_at, created_by,
+                updated_at, updated_by
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                document.document_type,
+                document.document_date.isoformat(),
+                document.title,
+                document.description,
+                document.filename,
+                document.file_path,
+                document.mime_type,
+                document.file_size_bytes,
+                document.sha256_hash,
+                now,
+                document.created_by,
+                now,
+                document.updated_by or document.created_by,
+            ),
+        )
+        if not isinstance(cur.lastrowid, int):
+            raise RuntimeError("Failed to insert document")
+        return cur.lastrowid
+
+    def get_by_id(self, document_id: int) -> Document | None:
+        cur = self._conn.cursor()
+        _execute(cur, "SELECT * FROM documents WHERE id = ? AND deleted_at IS NULL", (document_id,))
+        row = cur.fetchone()
+        return _row_to_document(row) if row else None
+
+
+class SqliteTransactionDocumentRepository:
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._conn = conn
+
+    def add(self, link: AccountingTransactionDocument) -> int:
+        now = _utcnow()
+        cur = self._conn.cursor()
+        _execute(
+            cur,
+            """
+            INSERT INTO accounting_transaction_documents
+                (transction_id, document_id, created_at, created_by, updated_at, updated_by)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (link.transaction_id, link.document_id, now, link.created_by, now, link.updated_by or link.created_by),
+        )
+        if not isinstance(cur.lastrowid, int):
+            raise RuntimeError("Failed to link document")
+        return cur.lastrowid
 
 
 class SqliteMileageRepository(MileageRepository):
