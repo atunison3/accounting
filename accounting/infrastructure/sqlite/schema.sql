@@ -148,6 +148,8 @@ CREATE TABLE IF NOT EXISTS accounting_transactions (
     id                 INTEGER PRIMARY KEY AUTOINCREMENT,
     transaction_date   TEXT    NOT NULL,
     description        TEXT    NOT NULL,
+    currency_code      TEXT    NOT NULL DEFAULT 'USD'
+        CHECK (length(currency_code) = 3),
     posting_reference  TEXT,
 
     created_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -281,9 +283,11 @@ CREATE TABLE IF NOT EXISTS accounting_transactions_history (
 
     transaction_id  INTEGER REFERENCES accounting_transactions(id),
 
-    transaction_date           TEXT    NOT NULL,
-    description                TEXT    NOT NULL,
+    transaction_date           TEXT,
+    description                TEXT,
     posting_reference          TEXT,
+    currency_code              TEXT,
+
 
     updated_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_by  INTEGER REFERENCES users(id)
