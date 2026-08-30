@@ -95,6 +95,14 @@ h2 { line-height: 1.15; letter-spacing: -.03em; }
 .chart-tooltip span { color: #bce4de; font-weight: 700; }
 .metric-card strong { color: var(--accent-dark); display: block; font-size: 2.8rem; line-height: 1.1; margin: 18px 0 8px; }
 .mileage-metrics { display: grid; gap: 22px; grid-template-columns: repeat(2, 1fr); margin-bottom: 22px; }
+.statement-heading { text-align: center; }
+.statement-heading h2, .statement-heading h3 { margin: 4px 0; }
+.statement-heading p { color: var(--muted); margin: 4px 0 12px; }
+.balance-sheet-grid { display: grid; gap: 22px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 22px; }
+.statement-table { min-width: 0; }
+.statement-table .amount { text-align: right; }
+.statement-table tfoot th { border-top: 2px solid var(--ink); color: var(--ink); }
+@media (max-width: 700px) { .balance-sheet-grid { grid-template-columns: 1fr; } }
 @media (max-width: 700px) { .mileage-metrics { grid-template-columns: 1fr; } }
 .metric-card p { color: var(--muted); margin: 0; }
 .analytics-grid .chart-wide { grid-column: 1 / -1; }

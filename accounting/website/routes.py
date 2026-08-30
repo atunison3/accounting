@@ -308,6 +308,31 @@ def upload_document_form(  # noqa: PLR0913, PLR0917
     return RedirectResponse(url=destination, status_code=303)
 
 
+@router.get("/balance-sheet", response_class=HTMLResponse, name="balance_sheet")
+def balance_sheet(request: Request, business_id: int | None = None, statement_date: date | None = None) -> HTMLResponse:
+    selected_date = statement_date or date.today()
+    with get_connection(_database_path(request)) as connection:
+        businesses = SqliteBusinessRepository(connection).get_all()
+        business = SqliteBusinessRepository(connection).get_by_id(business_id) if business_id else None
+        statement = None
+        if business is not None and business_id is not None:
+            statement = AnalyticsService(
+                SqliteTransactionRepository(connection),
+                SqliteAccountRepository(connection),
+            ).balance_sheet(business_id, selected_date)
+    return templates.TemplateResponse(
+        request=request,
+        name="balance_sheet.html",
+        context={
+            "page_title": "Balance Sheet",
+            "businesses": businesses,
+            "business": business,
+            "statement": statement,
+            "statement_date": selected_date,
+        },
+    )
+
+
 @router.get("/mileage", response_class=HTMLResponse, name="mileage_dashboard")
 def mileage_dashboard(request: Request, business_id: int | None = None, year: int | None = None) -> HTMLResponse:
     with get_connection(_database_path(request)) as connection:
@@ -881,7 +906,7 @@ def create_transaction_form(  # noqa: PLR0913, PLR0917
     user_id: int = Form(...),
     posting_reference: str | None = Form(None),
     document_file: UploadFile | None = File(None),  # noqa: B008
-    document_type: str = Form("Supporting document"),  # noqa: B008
+    document_type: str = Form("Receipt"),  # noqa: B008
     document_date: date | None = Form(None),  # noqa: B008
 ) -> HTMLResponse | RedirectResponse:
     LOGGER.debug("Creating transaction line_count=%s", len(account_numbers))

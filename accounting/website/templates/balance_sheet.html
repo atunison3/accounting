@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-heading"><p class="eyebrow">FINANCIAL STATEMENT</p><h1>Balance Sheet</h1></section>
+<section class="selector-card"><form class="business-selector" method="get" action="{{ url_for('balance_sheet') }}"><label>Business<select name="business_id" required><option value="">Select a business</option>{% for item in businesses %}<option value="{{ item.id }}"{% if business and item.id == business.id %} selected{% endif %}>{{ item.title }}</option>{% endfor %}</select></label><label>Statement date<input name="statement_date" type="date" value="{{ statement_date }}" required></label><button class="button primary" type="submit">Prepare statement</button></form></section>
+{% if business and statement %}
+<section class="statement-heading"><h2>{{ business.title }}</h2><h3>Balance Sheet</h3><p>As of {{ statement_date }}</p><p class="tag">Amounts in USD</p></section>
+<section class="balance-sheet-grid">
+    <article class="table-card"><h2>Assets</h2><table class="statement-table"><thead><tr><th>Account</th><th class="amount">Balance (USD)</th></tr></thead><tbody>{% for row in statement.assets %}<tr><td>{{ row.account_number }} · {{ row.account_name }}</td><td class="amount">${{ '%.2f'|format(row.balance_usd_cents / 100) }}</td></tr>{% endfor %}</tbody><tfoot><tr><th>Total assets</th><th class="amount">${{ '%.2f'|format(statement.assets_total_usd_cents / 100) }}</th></tr></tfoot></table></article>
+    <article class="table-card"><h2>Liabilities and owner's equity</h2><table class="statement-table"><thead><tr><th>Account</th><th class="amount">Balance (USD)</th></tr></thead><tbody>{% for row in statement.liabilities %}<tr><td>{{ row.account_number }} · {{ row.account_name }}</td><td class="amount">${{ '%.2f'|format(row.balance_usd_cents / 100) }}</td></tr>{% endfor %}{% for row in statement.equity %}<tr><td>{{ row.account_number if row.account_number else '' }}{% if row.account_number %} · {% endif %}{{ row.account_name }}</td><td class="amount">${{ '%.2f'|format(row.balance_usd_cents / 100) }}</td></tr>{% endfor %}</tbody><tfoot><tr><th>Total liabilities and equity</th><th class="amount">${{ '%.2f'|format(statement.liabilities_equity_total_usd_cents / 100) }}</th></tr></tfoot></table></article>
+</section>
+{% if statement.assets_total_usd_cents == statement.liabilities_equity_total_usd_cents %}<div class="notice success">Statement is in balance: both sides equal ${{ '%.2f'|format(statement.assets_total_usd_cents / 100) }} USD.</div>{% else %}<div class="notice error">Statement is out of balance by ${{ '%.2f'|format((statement.assets_total_usd_cents - statement.liabilities_equity_total_usd_cents)|abs / 100) }} USD.</div>{% endif %}
+{% endif %}
+{% endblock %}

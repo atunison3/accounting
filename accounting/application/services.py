@@ -170,6 +170,50 @@ class AnalyticsService:
             values[key] += amount if entry.is_debit == account.is_debit else -amount
         return [{"date": day, **daily[day]} for day in sorted(daily)]
 
+    def balance_sheet(self, business_id: int, statement_date: date) -> dict[str, Any]:
+        """Build a USD balance sheet through the statement date."""
+        accounts = {
+            account.account_number: account for account in self.account_repository.get_for_business(business_id)
+        }
+        balances = {number: 0 for number in accounts}
+        net_income = 0
+        for entry in self.transaction_repository.search(business_id, date_to=statement_date):
+            account = accounts.get(entry.account_number)
+            if account is None:
+                continue
+            amount = convert_currency(entry.amount_cents, entry.currency_code)
+            signed = amount if entry.is_debit == account.is_debit else -amount
+            if account.account_type in {AccountType.ASSET, AccountType.LIABILITY, AccountType.EQUITY}:
+                balances[account.account_number] += signed
+            elif account.account_type == AccountType.REVENUE:
+                net_income += signed
+            elif account.account_type == AccountType.EXPENSE:
+                net_income -= signed
+
+        def rows(account_type: AccountType) -> list[dict[str, int | str]]:
+            return [
+                {
+                    "account_number": account.account_number,
+                    "account_name": account.account_name,
+                    "balance_usd_cents": balances[account.account_number],
+                }
+                for account in accounts.values()
+                if account.account_type == account_type
+            ]
+
+        assets = rows(AccountType.ASSET)
+        liabilities = rows(AccountType.LIABILITY)
+        equity = rows(AccountType.EQUITY)
+        if net_income:
+            equity.append({"account_number": 0, "account_name": "Net income (loss)", "balance_usd_cents": net_income})
+        return {
+            "assets": assets,
+            "liabilities": liabilities,
+            "equity": equity,
+            "assets_total_usd_cents": sum(int(row["balance_usd_cents"]) for row in assets),
+            "liabilities_equity_total_usd_cents": sum(int(row["balance_usd_cents"]) for row in liabilities + equity),
+        }
+
     def documentless_transaction_percentage(self, business_id: int) -> dict[str, int | float]:
         """Return the percentage of active transactions lacking documents."""
         total, without_documents = self.transaction_repository.document_coverage(business_id)
