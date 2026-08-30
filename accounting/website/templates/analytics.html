@@ -6,13 +6,15 @@
     <select id="analytics-business"><option value="">Select a business</option>{% for business in businesses %}<option value="{{ business.id }}"{% if business.id == selected_business_id %} selected{% endif %}>{{ business.title }}</option>{% endfor %}</select>
     <p class="filter-status" id="analytics-status">Select a business to load the equity chart.</p>
 </section>
-<section class="table-card chart-card"><div id="equity-chart" aria-label="Owner's equity over time"></div></section>
+<section class="table-card chart-card" id="equity-chart-panel"><div class="chart-toolbar"><h2>Owner's equity (USD)</h2><button class="button secondary" id="fullscreen-chart" type="button" aria-label="View equity chart full screen">Full screen</button></div><div id="equity-chart" aria-label="Owner's equity over time"></div></section>
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script>
 const businessSelect = document.getElementById('analytics-business');
 const chart = document.getElementById('equity-chart');
 const chartStatus = document.getElementById('analytics-status');
+let currentData = [];
 function renderEquity(data) {
+    currentData = data;
     chart.innerHTML = '';
     if (!data.length) { chartStatus.textContent = 'No equity transactions found for this business.'; return; }
     const width = Math.max(chart.clientWidth, 640), height = 360;
@@ -38,6 +40,16 @@ async function loadEquity() {
     window.history.replaceState({}, '', `/analytics?business_id=${businessSelect.value}`);
 }
 businessSelect.addEventListener('change', loadEquity);
+const chartPanel = document.getElementById('equity-chart-panel');
+const fullscreenButton = document.getElementById('fullscreen-chart');
+fullscreenButton.addEventListener('click', async () => {
+    if (!document.fullscreenElement) await chartPanel.requestFullscreen();
+    else await document.exitFullscreen();
+});
+document.addEventListener('fullscreenchange', () => {
+    fullscreenButton.textContent = document.fullscreenElement ? 'Exit full screen' : 'Full screen';
+    if (currentData.length) renderEquity(currentData);
+});
 if (businessSelect.value) loadEquity();
 </script>
 {% endblock %}
