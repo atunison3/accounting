@@ -1,23 +1,63 @@
 {% extends "base.html" %}
 {% block content %}
-<section class="page-heading">
-    <p class="eyebrow">GENERAL LEDGER</p>
-    <h1>Transactions</h1>
-    <p class="lead">Review every posting for a business and filter the journal by account, direction, amount, or date.</p>
-</section>
+<link href="https://unpkg.com/tabulator-tables@6.3.1/dist/css/tabulator.min.css" rel="stylesheet">
+<section class="page-heading"><p class="eyebrow">GENERAL LEDGER</p><h1>Transactions</h1><p class="lead">Select a business, then slice and drill through its transaction lines.</p></section>
 <section class="selector-card">
-    <form method="get" action="{{ url_for('transactions_dashboard') }}" class="filters">
-        <div><label for="transaction-business">Business</label><select id="transaction-business" name="business_id" required><option value="">Select a business</option>{% for business in businesses %}<option value="{{ business.id }}" {% if filters.get('business_id') == business.id|string %}selected{% endif %}>{{ business.title }}</option>{% endfor %}</select></div>
-        <div><label for="account-number">Account</label><select id="account-number" name="account_number"><option value="">All accounts</option>{% for account in accounts %}<option value="{{ account.account_number }}" {% if filters.get('account_number') == account.account_number|string %}selected{% endif %}>{{ account.account_number }} · {{ account.account_name }}</option>{% endfor %}</select></div>
-        <div><label for="entry-type">Debit or credit</label><select id="entry-type" name="entry_type"><option value="">Both</option><option value="debit" {% if filters.get('entry_type') == 'debit' %}selected{% endif %}>Debit</option><option value="credit" {% if filters.get('entry_type') == 'credit' %}selected{% endif %}>Credit</option></select></div>
-        <div><label for="amount-min">Minimum amount ($)</label><input id="amount-min" name="amount_min" type="number" min="0" step="0.01" value="{{ filters.get('amount_min', '') }}"></div>
-        <div><label for="amount-max">Maximum amount ($)</label><input id="amount-max" name="amount_max" type="number" min="0" step="0.01" value="{{ filters.get('amount_max', '') }}"></div>
-        <div><label for="date-from">From date</label><input id="date-from" name="date_from" type="date" value="{{ filters.get('date_from', '') }}"></div>
-        <div><label for="date-to">To date</label><input id="date-to" name="date_to" type="date" value="{{ filters.get('date_to', '') }}"></div>
-        <div><label for="days">Last N days</label><input id="days" name="days" type="number" min="1" value="{{ filters.get('days', days) }}"><small class="field-help">Used when dates are blank (default: 30).</small></div>
-        <div class="filter-actions"><button class="button primary" type="submit">Apply filters</button><a class="button secondary" href="{{ url_for('transactions_dashboard') }}">Clear</a></div>
-    </form>
+    <div class="filters">
+        <div><label for="transaction-business">Business</label><select id="transaction-business" required><option value="">Select a business</option>{% for business in businesses %}<option value="{{ business.id }}">{{ business.title }}</option>{% endfor %}</select></div>
+        <div><label for="account-number">Account</label><select id="account-number"><option value="">All accounts</option></select></div>
+        <div><label for="entry-type">Entry type</label><select id="entry-type"><option value="">Both</option><option value="debit">Debit</option><option value="credit">Credit</option></select></div>
+        <div><label for="amount-min">Minimum amount ($)</label><input id="amount-min" type="number" min="0" step="0.01"></div>
+        <div><label for="amount-max">Maximum amount ($)</label><input id="amount-max" type="number" min="0" step="0.01"></div>
+        <div><label for="days">Last N days</label><input id="days" type="number" min="1" value="30"></div>
+        <div><label for="date-from">From date</label><input id="date-from" type="date"></div>
+        <div><label for="date-to">To date</label><input id="date-to" type="date"></div>
+        <div class="filter-actions"><button class="button primary" id="apply-filters" type="button">Apply filters</button><button class="button secondary" id="clear-filters" type="button">Clear</button></div>
+    </div>
+    <p class="filter-status" id="filter-status">Select a business to load transactions.</p>
 </section>
-{% if error %}<div class="notice error" role="alert">{{ error }}</div>{% endif %}
-{% if filters.get('business_id') %}<section class="table-card"><div class="table-heading"><h2>Transaction lines</h2><span>{{ transactions|length }} result{{ '' if transactions|length == 1 else 's' }} · last {{ days }} days</span></div>{% if transactions %}<div class="table-wrap"><table><thead><tr><th>Date</th><th>Description</th><th>Account</th><th>Debit</th><th>Credit</th><th>Reference</th></tr></thead><tbody>{% for transaction in transactions %}<tr><td>{{ transaction.transaction_date }}</td><td>{{ transaction.description }}</td><td><strong>{{ transaction.account_number }}</strong> · {{ transaction.account_name }}</td><td>{% if transaction.is_debit %}${{ '%.2f'|format(transaction.amount_cents / 100) }}{% endif %}</td><td>{% if not transaction.is_debit %}${{ '%.2f'|format(transaction.amount_cents / 100) }}{% endif %}</td><td>{{ transaction.posting_reference or '—' }}</td></tr>{% endfor %}</tbody></table></div>{% else %}<p class="empty">No transactions match these filters.</p>{% endif %}</section>{% endif %}
+<section class="table-card"><div id="transactions-table"></div></section>
+<script src="https://unpkg.com/tabulator-tables@6.3.1/dist/js/tabulator.min.js"></script>
+<script>
+const business = document.getElementById('transaction-business');
+const account = document.getElementById('account-number');
+const status = document.getElementById('filter-status');
+const table = new Tabulator('#transactions-table', {
+    layout: 'fitColumns', placeholder: 'Select a business to see transactions.',
+    columns: [
+        {title: 'Date', field: 'transaction_date', sorter: 'date'},
+        {title: 'Description', field: 'description', minWidth: 180},
+        {title: 'Account', field: 'account_number', formatter: (cell) => `${cell.getValue()} · ${cell.getData().account_name}`},
+        {title: 'Debit', field: 'amount_cents', hozAlign: 'right', formatter: debitFormatter},
+        {title: 'Credit', field: 'amount_cents', hozAlign: 'right', formatter: creditFormatter},
+        {title: 'Reference', field: 'posting_reference'},
+    ],
+    data: []
+});
+function money(value) { return value === null ? '' : `$${(value / 100).toFixed(2)}`; }
+function debitFormatter(cell) { return cell.getData().is_debit ? money(cell.getValue()) : ''; }
+function creditFormatter(cell) { return cell.getData().is_debit ? '' : money(cell.getValue()); }
+async function loadAccounts() {
+    account.innerHTML = '<option value="">All accounts</option>';
+    if (!business.value) return;
+    const response = await fetch(`/api/accounts?business_id=${business.value}`);
+    if (!response.ok) return;
+    (await response.json()).forEach(item => { account.add(new Option(`${item.account_number} · ${item.name}`, item.account_number)); });
+}
+async function queryTransactions() {
+    if (!business.value) { status.textContent = 'Select a business to load transactions.'; table.clearData(); return; }
+    const params = new URLSearchParams({business_id: business.value, days: document.getElementById('days').value || '30'});
+    const fields = {account_number: account.value, entry_type: document.getElementById('entry-type').value, amount_min: document.getElementById('amount-min').value, amount_max: document.getElementById('amount-max').value, date_from: document.getElementById('date-from').value, date_to: document.getElementById('date-to').value};
+    Object.entries(fields).forEach(([key, value]) => { if (value) params.set(key, value); });
+    status.textContent = 'Loading transactions…';
+    const response = await fetch(`/api/transactions?${params}`);
+    if (!response.ok) { status.textContent = 'Unable to load transactions.'; return; }
+    const rows = await response.json();
+    await table.replaceData(rows);
+    status.textContent = `${rows.length} transaction line${rows.length === 1 ? '' : 's'} found.`;
+}
+business.addEventListener('change', async () => { await loadAccounts(); await queryTransactions(); });
+document.getElementById('apply-filters').addEventListener('click', queryTransactions);
+document.getElementById('clear-filters').addEventListener('click', async () => { document.querySelectorAll('.filters input').forEach(input => input.value = input.id === 'days' ? '30' : ''); document.getElementById('entry-type').value = ''; account.value = ''; await queryTransactions(); });
+</script>
 {% endblock %}

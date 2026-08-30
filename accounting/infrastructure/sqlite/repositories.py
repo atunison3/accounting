@@ -10,6 +10,7 @@ from accounting.domain.models import (
     AccountType,
     AccountingTransaction,
     Business,
+    Mileage,
     TransactionLine,
     TransactionEntry,
     User,
@@ -17,6 +18,7 @@ from accounting.domain.models import (
 from accounting.application.repositories import (
     AccountRepository,
     BusinessRepository,
+    MileageRepository,
     TransactionRepository,
     UserRepository,
 )
@@ -76,6 +78,25 @@ def _row_to_business(row: sqlite3.Row) -> Business:
         is_business_active=_int_to_bool(row["is_business_active"]),
         established=row["established"],
         tax_year_end_month=row["tax_year_end_month"],
+        created_at=row["created_at"],
+        created_by=row["created_by"],
+        updated_at=row["updated_at"],
+        updated_by=row["updated_by"],
+        deleted_at=row["deleted_at"],
+        deleted_by=row["deleted_by"],
+    )
+
+
+def _row_to_mileage(row: sqlite3.Row) -> Mileage:
+    return Mileage(
+        id=row["id"],
+        business_id=row["business_id"],
+        mileage_date=row["miles_date"],
+        tenth_miles=row["tenth_miles"],
+        start_tenth_miles=row["tenth_miles_begin"],
+        end_tenth_miles=row["tenth_miles_end"],
+        explanation=row["explanation"],
+        vehicle=row["vehicle"],
         created_at=row["created_at"],
         created_by=row["created_by"],
         updated_at=row["updated_at"],
@@ -231,6 +252,47 @@ class SqliteBusinessRepository(BusinessRepository):
         cur = self._conn.cursor()
         _execute(cur, "SELECT * FROM businesses WHERE deleted_at IS NULL ORDER BY title")
         return [_row_to_business(row) for row in cur.fetchall()]
+
+
+class SqliteMileageRepository(MileageRepository):
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._conn = conn
+
+    def add(self, mileage: Mileage) -> int:
+        now = _utcnow()
+        cur = self._conn.cursor()
+        _execute(
+            cur,
+            """
+            INSERT INTO miles (
+                business_id, miles_date, tenth_miles, tenth_miles_begin,
+                tenth_miles_end, explanation, vehicle, created_at, created_by,
+                updated_at, updated_by
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                mileage.business_id,
+                mileage.mileage_date.isoformat(),
+                mileage.tenth_miles,
+                mileage.start_tenth_miles,
+                mileage.end_tenth_miles,
+                mileage.explanation,
+                mileage.vehicle,
+                now,
+                mileage.created_by,
+                now,
+                mileage.updated_by or mileage.created_by,
+            ),
+        )
+        if not isinstance(cur.lastrowid, int):
+            raise RuntimeError("Failed to insert mileage")
+        return cur.lastrowid
+
+    def get_by_id(self, mileage_id: int) -> Mileage | None:
+        cur = self._conn.cursor()
+        _execute(cur, "SELECT * FROM miles WHERE id = ? AND deleted_at IS NULL", (mileage_id,))
+        row = cur.fetchone()
+        return _row_to_mileage(row) if row else None
 
 
 class SqliteAccountRepository(AccountRepository):

@@ -9,8 +9,8 @@ from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 
-from accounting.application.services import AccountService, AccountingService
-from accounting.domain.models import Account, AccountType, Business, TransactionLine, User
+from accounting.application.services import AccountService, AccountingService, MileageService
+from accounting.domain.models import Account, AccountType, Business, Mileage, TransactionLine, User
 from accounting.infrastructure.sqlite.connection import DEFAULT_DATABASE_PATH, get_connection
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
@@ -21,6 +21,7 @@ from reportlab.platypus import SimpleDocTemplate, Spacer, Table, TableStyle, Par
 from accounting.infrastructure.sqlite.repositories import (
     SqliteAccountRepository,
     SqliteBusinessRepository,
+    SqliteMileageRepository,
     SqliteTransactionRepository,
     SqliteUserRepository,
 )
@@ -47,6 +48,13 @@ def _optional_decimal(value: str | None) -> Decimal | None:
 
 def _optional_date(value: str | None) -> date | None:
     return date.fromisoformat(value) if value and value.strip() else None
+
+
+def _miles_to_tenths(value: Decimal) -> int:
+    exponent = value.as_tuple().exponent
+    if not value.is_finite() or value < 0 or not isinstance(exponent, int) or exponent < -1:
+        raise ValueError("Mileage must be a non-negative value with at most one decimal place.")
+    return int(value * 10)
 
 
 def _dollars_to_cents(value: Decimal) -> int:
@@ -121,6 +129,39 @@ def create_user_form(
         )
     LOGGER.debug("User created username=%s", username)
     return RedirectResponse(url="/dashboard?message=User%20created", status_code=303)
+
+
+@router.post("/mileage/create", response_class=HTMLResponse, response_model=None, name="create_mileage_form")
+def create_mileage_form(  # noqa: PLR0913, PLR0917
+    request: Request,
+    business_id: int = Form(...),
+    mileage_date: date = Form(...),  # noqa: B008
+    miles: Decimal = Form(...),  # noqa: B008
+    explanation: str = Form(...),
+    created_by: int = Form(...),
+    start_miles: Decimal | None = Form(None),  # noqa: B008
+    end_miles: Decimal | None = Form(None),  # noqa: B008
+    vehicle: str | None = Form(None),
+) -> HTMLResponse | RedirectResponse:
+    try:
+        start_tenths = _miles_to_tenths(start_miles) if start_miles is not None else None
+        end_tenths = _miles_to_tenths(end_miles) if end_miles is not None else None
+        mileage = Mileage(
+            business_id=business_id,
+            mileage_date=mileage_date,
+            tenth_miles=_miles_to_tenths(miles),
+            start_tenth_miles=start_tenths,
+            end_tenth_miles=end_tenths,
+            explanation=explanation,
+            vehicle=vehicle or None,
+            created_by=created_by,
+        )
+        with get_connection(_database_path(request)) as connection:
+            MileageService(SqliteMileageRepository(connection)).record(mileage)
+    except Exception as exc:
+        LOGGER.exception("Mileage creation failed")
+        return _dashboard(request, f"Could not log mileage: {exc}")
+    return RedirectResponse(url="/dashboard?message=Mileage%20logged", status_code=303)
 
 
 @router.get("/about", response_class=HTMLResponse, name="about")
@@ -204,6 +245,52 @@ def transactions_dashboard(  # noqa: PLR0913, PLR0917
             "error": error,
         },
     )
+
+
+@router.get("/api/accounts", name="api_accounts")
+def api_accounts(request: Request, business_id: int) -> JSONResponse:
+    LOGGER.debug("Querying account options business_id=%s", business_id)
+    with get_connection(_database_path(request)) as connection:
+        accounts = SqliteAccountRepository(connection).get_for_business(business_id)
+    return JSONResponse(
+        [
+            {"id": account.id, "account_number": account.account_number, "name": account.account_name}
+            for account in accounts
+        ]
+    )
+
+
+@router.get("/api/transactions", name="api_transactions")
+def api_transactions(  # noqa: PLR0913, PLR0917
+    request: Request,
+    business_id: int,
+    account_number: str | None = None,
+    entry_type: str | None = None,
+    amount_min: str | None = None,
+    amount_max: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    days: int = 30,
+) -> JSONResponse:
+    """Return filtered transaction lines for Tabulator's remote data source."""
+    selected_date_from = _optional_date(date_from) or date.today() - timedelta(days=days - 1)
+    selected_date_to = _optional_date(date_to) or date.today()
+    is_debit = None if not entry_type else entry_type == "debit"
+    if entry_type not in {None, "", "debit", "credit"} or days < 1:
+        raise HTTPException(status_code=422, detail="Invalid transaction filters")
+    min_amount = _optional_decimal(amount_min)
+    max_amount = _optional_decimal(amount_max)
+    with get_connection(_database_path(request)) as connection:
+        results = AccountingService(SqliteTransactionRepository(connection)).list_transactions(
+            business_id=business_id,
+            account_number=_optional_int(account_number),
+            is_debit=is_debit,
+            min_amount_cents=_dollars_to_cents(min_amount) if min_amount is not None else None,
+            max_amount_cents=_dollars_to_cents(max_amount) if max_amount is not None else None,
+            date_from=selected_date_from,
+            date_to=selected_date_to,
+        )
+    return JSONResponse([result.model_dump(mode="json") for result in results])
 
 
 @router.get("/chart-of-accounts", response_class=HTMLResponse, name="chart_of_accounts")

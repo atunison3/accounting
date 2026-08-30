@@ -43,6 +43,21 @@
             <button class="button primary" type="submit">Add account</button>
         </form>
     </article>
+    <article class="form-card">
+        <h2>Log mileage</h2>
+        <p class="muted">Record business mileage in miles, up to one decimal place.</p>
+        <form method="post" action="{{ url_for('create_mileage_form') }}">
+            <label for="mileage-business">Business ID</label><input id="mileage-business" name="business_id" type="number" min="1" required>
+            <label for="mileage-date">Date</label><input id="mileage-date" name="mileage_date" type="date" required>
+            <label for="miles">Miles driven</label><input id="miles" name="miles" type="number" min="0" step="0.1" required>
+            <label for="start-miles">Starting odometer <span>(optional)</span></label><input id="start-miles" name="start_miles" type="number" min="0" step="0.1">
+            <label for="end-miles">Ending odometer <span>(optional)</span></label><input id="end-miles" name="end_miles" type="number" min="0" step="0.1">
+            <label for="mileage-vehicle">Vehicle <span>(optional)</span></label><input id="mileage-vehicle" name="vehicle">
+            <label for="mileage-explanation">Explanation</label><input id="mileage-explanation" name="explanation" required>
+            <label for="mileage-user">Created by user ID</label><input id="mileage-user" name="created_by" type="number" min="1" required>
+            <button class="button primary" type="submit">Log mileage</button>
+        </form>
+    </article>
     <article class="form-card wide">
         <h2>Post a transaction</h2>
         <p class="muted">A simple two-line journal entry. Enter dollar amounts; debits and credits must match.</p>
