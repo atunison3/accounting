@@ -323,15 +323,23 @@ def update_transaction_form(  # noqa: PLR0913, PLR0917
     transaction_date: date = Form(...),  # noqa: B008
     currency_code: str = Form("USD"),  # noqa: B008
     description: str = Form(...),
-    account_ids: list[int] = Form(...),  # noqa: B008
+    account_numbers: list[int] = Form(...),  # noqa: B008
     amounts: list[Decimal] = Form(...),  # noqa: B008
     line_types: list[str] = Form(...),  # noqa: B008
     user_id: int = Form(...),
     posting_reference: str | None = Form(None),
 ) -> HTMLResponse | RedirectResponse:
     try:
-        if not (len(account_ids) == len(amounts) == len(line_types)):
+        if not (len(account_numbers) == len(amounts) == len(line_types)):
             raise ValueError("Each transaction line needs an account, amount, and type.")
+        with get_connection(_database_path(request)) as connection:
+            account_repository = SqliteAccountRepository(connection)
+            account_ids = []
+            for account_number in account_numbers:
+                account = account_repository.get_by_number(business_id, account_number)
+                if account is None or account.id is None:
+                    raise ValueError(f"Account number {account_number} was not found for this business.")
+                account_ids.append(account.id)
         lines = [
             TransactionLine(
                 transaction_id=transaction_id,
