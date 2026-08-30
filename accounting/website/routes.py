@@ -9,7 +9,7 @@ from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 
-from accounting.application.services import AccountService, AccountingService, MileageService
+from accounting.application.services import AccountService, AccountingService, AnalyticsService, MileageService
 from accounting.domain.models import Account, AccountType, Business, Mileage, TransactionLine, User
 from accounting.infrastructure.sqlite.connection import DEFAULT_DATABASE_PATH, get_connection
 from reportlab.lib import colors
@@ -178,6 +178,33 @@ def about(request: Request) -> HTMLResponse:
 def dashboard(request: Request) -> HTMLResponse:
     LOGGER.debug("Rendering dashboard page")
     return _dashboard(request)
+
+
+@router.get("/analytics", response_class=HTMLResponse, name="analytics_dashboard")
+def analytics_dashboard(request: Request, business_id: int | None = None) -> HTMLResponse:
+    """Render the business analytics dashboard shell."""
+    with get_connection(_database_path(request)) as connection:
+        businesses = SqliteBusinessRepository(connection).get_all()
+    return templates.TemplateResponse(
+        request=request,
+        name="analytics.html",
+        context={
+            "page_title": "Business analytics",
+            "businesses": businesses,
+            "selected_business_id": business_id,
+        },
+    )
+
+
+@router.get("/api/analytics/equity", name="api_equity_analytics")
+def api_equity_analytics(request: Request, business_id: int) -> JSONResponse:
+    """Return cumulative owner equity in USD cents for one business."""
+    with get_connection(_database_path(request)) as connection:
+        points = AnalyticsService(
+            SqliteTransactionRepository(connection),
+            SqliteAccountRepository(connection),
+        ).owner_equity_over_time(business_id)
+    return JSONResponse(points)
 
 
 @router.get("/transactions", response_class=HTMLResponse, name="transactions_dashboard")

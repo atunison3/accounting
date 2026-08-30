@@ -1,8 +1,10 @@
 from datetime import date
 from typing import Any
 
+from accounting.domain.currency import convert_currency
 from accounting.domain.models import (
     Account,
+    AccountType,
     AccountingTransaction,
     AccountingTransactionDocument,
     Business,
@@ -119,6 +121,40 @@ class AccountingService:
             raise ValueError(f"Transaction {transaction_id} does not exist.")
         delete = getattr(type(self.repository), "delete", None)
         (self.repository.delete if delete else self.repository.delete_transaction)(transaction_id, user_id)
+
+
+class AnalyticsService:
+    """Build business analytics from repository ports."""
+
+    def __init__(self, transaction_repository: Any, account_repository: Any) -> None:
+        self.transaction_repository = transaction_repository
+        self.account_repository = account_repository
+
+    def owner_equity_over_time(self, business_id: int) -> list[dict[str, int | str]]:
+        """Return cumulative owner-equity balances converted to USD cents."""
+        accounts = {
+            account.account_number: account
+            for account in self.account_repository.get_for_business(business_id)
+            if account.account_type == AccountType.EQUITY
+        }
+        entries = self.transaction_repository.search(business_id, None, None, None, None, None, None)
+        daily_changes: dict[str, int] = {}
+        for entry in entries:
+            account = accounts.get(entry.account_number)
+            if account is None:
+                continue
+            amount = convert_currency(entry.amount_cents, entry.currency_code)
+            # Equity normally has a credit balance; honor the account's normal balance.
+            change = amount if entry.is_debit == account.is_debit else -amount
+            day = entry.transaction_date.isoformat()
+            daily_changes[day] = daily_changes.get(day, 0) + change
+
+        balance = 0
+        points: list[dict[str, int | str]] = []
+        for day in sorted(daily_changes):
+            balance += daily_changes[day]
+            points.append({"date": day, "equity_usd_cents": balance})
+        return points
 
 
 class BusinessService:
