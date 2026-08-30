@@ -32,7 +32,7 @@ const table = new Tabulator('#transactions-table', {
         {title: 'Debit', field: 'amount_cents', hozAlign: 'right', formatter: debitFormatter},
         {title: 'Credit', field: 'amount_cents', hozAlign: 'right', formatter: creditFormatter},
         {title: 'Reference', field: 'posting_reference'},
-        {title: '', field: 'transaction_id', width: 70, formatter: (cell) => `<a class="table-action" href="/transactions/${cell.getValue()}/edit?return_to=${encodeURIComponent(window.location.href)}">Edit</a>`},
+        {title: '', field: 'transaction_id', width: 70, formatter: (cell) => `<a class="table-action" href="/transactions/${cell.getValue()}/edit?return_to=${encodeURIComponent(window.location.pathname + window.location.search)}">Edit</a>`},
     ],
     data: []
 });
@@ -45,6 +45,8 @@ async function loadAccounts() {
     const response = await fetch(`/api/accounts?business_id=${business.value}`);
     if (!response.ok) return;
     (await response.json()).forEach(item => { account.add(new Option(`${item.account_number} · ${item.name}`, item.account_number)); });
+    const selectedAccount = new URLSearchParams(window.location.search).get('account_number');
+    if (selectedAccount) account.value = selectedAccount;
 }
 async function queryTransactions() {
     if (!business.value) { status.textContent = 'Select a business to load transactions.'; table.clearData(); return; }
@@ -62,5 +64,21 @@ async function queryTransactions() {
 business.addEventListener('change', async () => { await loadAccounts(); await queryTransactions(); });
 document.getElementById('apply-filters').addEventListener('click', queryTransactions);
 document.getElementById('clear-filters').addEventListener('click', async () => { document.querySelectorAll('.filters input').forEach(input => input.value = input.id === 'days' ? '30' : ''); document.getElementById('entry-type').value = ''; account.value = ''; await queryTransactions(); });
+
+// Restore the dashboard state after returning from an edit (and load it immediately).
+(async function restoreFilters() {
+    const params = new URLSearchParams(window.location.search);
+    const values = {
+        'transaction-business': params.get('business_id') || '',
+        'entry-type': params.get('entry_type') || '',
+        'amount-min': params.get('amount_min') || '',
+        'amount-max': params.get('amount_max') || '',
+        'days': params.get('days') || '30',
+        'date-from': params.get('date_from') || '',
+        'date-to': params.get('date_to') || ''
+    };
+    Object.entries(values).forEach(([id, value]) => { document.getElementById(id).value = value; });
+    if (business.value) { await loadAccounts(); await queryTransactions(); }
+})();
 </script>
 {% endblock %}
