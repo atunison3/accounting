@@ -35,6 +35,9 @@ class TransactionRepository:
     def delete(self, transaction_id: int, user_id: int) -> None:
         raise NotImplementedError
 
+    def document_coverage(self, business_id: int) -> tuple[int, int]:
+        raise NotImplementedError
+
     def search(  # noqa: PLR0913, PLR0917
         self,
         business_id: int,

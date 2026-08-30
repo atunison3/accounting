@@ -587,6 +587,26 @@ class SqliteTransactionRepository(TransactionRepository):
             for row in cur.fetchall()
         ]
 
+    def document_coverage(self, business_id: int) -> tuple[int, int]:
+        """Return (total active transactions, transactions without documents)."""
+        cur = self._conn.cursor()
+        _execute(
+            cur,
+            """
+            SELECT COUNT(*) AS total,
+                   SUM(CASE WHEN NOT EXISTS (
+                       SELECT 1 FROM accounting_transaction_documents AS atd
+                       -- The schema's legacy column is misspelled as transction_id.
+                       WHERE atd.transction_id = t.id AND atd.deleted_at IS NULL
+                   ) THEN 1 ELSE 0 END) AS without_documents
+            FROM accounting_transactions AS t
+            WHERE t.business_id = ? AND t.deleted_at IS NULL
+            """,
+            (business_id,),
+        )
+        row = cur.fetchone()
+        return (int(row["total"] or 0), int(row["without_documents"] or 0))
+
     def delete(self, transaction_id: int, user_id: int) -> None:
         """Soft-delete the transaction and all its lines."""
         now = _utcnow()

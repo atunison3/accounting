@@ -166,6 +166,16 @@ class AnalyticsService:
             values[key] += amount if entry.is_debit == account.is_debit else -amount
         return [{"date": day, **daily[day]} for day in sorted(daily)]
 
+    def documentless_transaction_percentage(self, business_id: int) -> dict[str, int | float]:
+        """Return the percentage of active transactions lacking documents."""
+        total, without_documents = self.transaction_repository.document_coverage(business_id)
+        percentage = round(without_documents / total * 100, 2) if total else 0.0
+        return {
+            "transaction_count": total,
+            "without_documents": without_documents,
+            "percentage": percentage,
+        }
+
     def cash_balance_over_time(self, business_id: int) -> list[dict[str, int | str]]:
         """Return cumulative cash and bank balances converted to USD cents."""
         accounts, entries = self._business_accounts_and_entries(business_id)

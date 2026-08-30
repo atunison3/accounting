@@ -219,6 +219,7 @@ def api_analytics_overview(request: Request, business_id: int) -> JSONResponse:
             "equity": analytics.owner_equity_over_time(business_id),
             "revenue_expenses": analytics.revenue_and_expenses_over_time(business_id),
             "cash": analytics.cash_balance_over_time(business_id),
+            "document_coverage": analytics.documentless_transaction_percentage(business_id),
         }
     return JSONResponse(data)
 
