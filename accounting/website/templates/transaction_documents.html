@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-heading"><p class="eyebrow">TRANSACTION {{ transaction.id }}</p><h1>Document(s)</h1><p class="lead">Supporting documents linked to “{{ transaction.description }}”.</p></section>
+<section class="table-card">
+{% if documents %}
+<div class="table-wrap"><table><thead><tr><th>Filename</th><th>Type</th><th>Date</th><th>Size</th><th></th></tr></thead><tbody>
+{% for document in documents %}<tr><td>{{ document.filename }}</td><td>{{ document.document_type }}</td><td>{{ document.document_date }}</td><td>{{ document.file_size_bytes or 0 }} bytes</td><td><a class="button secondary" href="{{ url_for('download_document', document_id=document.id) }}">View document</a></td></tr>{% endfor %}
+</tbody></table></div>
+{% else %}<p class="empty">No documents are linked to this transaction.</p>{% endif %}
+<p class="actions"><a class="button primary" href="{{ url_for('upload_document') }}?business_id={{ transaction.business_id }}&amp;transaction_id={{ transaction.id }}">Attach document</a><a class="button secondary" href="{{ url_for('edit_transaction', transaction_id=transaction.id) }}">Back to transaction</a></p>
+</section>
+{% endblock %}

@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import cast
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 
 from accounting.application.services import AccountService, AccountingService, AnalyticsService, MileageService
@@ -528,6 +528,42 @@ def api_transactions(  # noqa: PLR0913, PLR0917
             has_document=has_document,
         )
     return JSONResponse([result.model_dump(mode="json") for result in results])
+
+
+@router.get("/transactions/{transaction_id}/documents", response_class=HTMLResponse, name="transaction_documents")
+def transaction_documents(request: Request, transaction_id: int) -> HTMLResponse:
+    with get_connection(_database_path(request)) as connection:
+        transaction = SqliteTransactionRepository(connection).get_by_id(transaction_id)
+        documents = SqliteTransactionDocumentRepository(connection).get_for_transaction(transaction_id)
+    if transaction is None:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    return templates.TemplateResponse(
+        request=request,
+        name="transaction_documents.html",
+        context={"page_title": "Transaction documents", "transaction": transaction, "documents": documents},
+    )
+
+
+@router.get("/documents/{document_id}/download", name="download_document")
+def download_document(request: Request, document_id: int) -> FileResponse:
+    with get_connection(_database_path(request)) as connection:
+        document = SqliteDocumentRepository(connection).get_by_id(document_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    document_path = Path(document.file_path).resolve()
+    documents_root = DOCUMENTS_DIRECTORY.resolve()
+    try:
+        document_path.relative_to(documents_root)
+    except ValueError as exc:
+        LOGGER.warning("Rejected document path outside document directory id=%s", document_id)
+        raise HTTPException(status_code=404, detail="Document file not found") from exc
+    if not document_path.is_file():
+        raise HTTPException(status_code=404, detail="Document file not found")
+    return FileResponse(
+        document_path,
+        media_type=document.mime_type or "application/octet-stream",
+        filename=document.filename,
+    )
 
 
 @router.get("/transactions/{transaction_id}/edit", response_class=HTMLResponse, name="edit_transaction")

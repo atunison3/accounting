@@ -24,24 +24,16 @@
 const business = document.getElementById('transaction-business');
 const account = document.getElementById('account-number');
 const status = document.getElementById('filter-status');
-const table = new Tabulator('#transactions-table', {
-    layout: 'fitColumns', placeholder: 'Select a business to see transactions.',
-    columns: [
-        {title: 'Date', field: 'transaction_date', sorter: 'date'},
-        {title: 'Currency', field: 'currency_code', width: 95},
-        {title: 'Document', field: 'has_document', width: 105, formatter: (cell) => cell.getValue() ? 'Attached' : 'Missing'},
-        {title: 'Description', field: 'description', minWidth: 180},
-        {title: 'Account', field: 'account_number', formatter: (cell) => `${cell.getValue()} · ${cell.getData().account_name}`},
-        {title: 'Debit', field: 'amount_cents', hozAlign: 'right', formatter: debitFormatter},
-        {title: 'Credit', field: 'amount_cents', hozAlign: 'right', formatter: creditFormatter},
-        {title: 'Reference', field: 'posting_reference'},
-        {title: '', field: 'transaction_id', width: 135, formatter: (cell) => { const id = cell.getValue(); const back = encodeURIComponent(window.location.pathname + window.location.search); return `<a class="table-action" href="/transactions/${id}/edit?return_to=${back}">Edit</a> · <a class="table-action" href="/documents/upload?business_id=${business.value}&transaction_id=${id}">Attach</a>`; }},
-    ],
-    data: []
-});
-function money(value) { return value === null ? '' : `$${(value / 100).toFixed(2)}`; }
-function debitFormatter(cell) { return cell.getData().is_debit ? money(cell.getValue()) : ''; }
-function creditFormatter(cell) { return cell.getData().is_debit ? '' : money(cell.getValue()); }
+const currencySymbols = {USD: '$', TBH: '฿', THB: '฿', EUR: '€', GBP: '£', JPY: '¥', CAD: '$', AUD: '$'};
+function money(value, currency) { return value === null ? '' : `${currencySymbols[currency] || currency} ${(value / 100).toFixed(2)}`; }
+function debitFormatter(cell) { return cell.getData().is_debit ? money(cell.getValue(), cell.getData().currency_code) : ''; }
+function creditFormatter(cell) { return cell.getData().is_debit ? '' : money(cell.getValue(), cell.getData().currency_code); }
+const table = new Tabulator('#transactions-table', {layout: 'fitColumns', placeholder: 'Select a business to see transactions.', columns: [
+    {title: 'Date', field: 'transaction_date', sorter: 'date'}, {title: 'Currency', field: 'currency_code', width: 95}, {title: 'Document', field: 'has_document', width: 105, formatter: cell => cell.getValue() ? 'Attached' : 'Missing'},
+    {title: 'Description', field: 'description', minWidth: 180}, {title: 'Account', field: 'account_number', formatter: cell => `${cell.getValue()} · ${cell.getData().account_name}`},
+    {title: 'Debit', field: 'amount_cents', hozAlign: 'right', formatter: debitFormatter}, {title: 'Credit', field: 'amount_cents', hozAlign: 'right', formatter: creditFormatter},
+    {title: '', field: 'transaction_id', width: 290, formatter: cell => { const id = cell.getValue(); const back = encodeURIComponent(window.location.pathname + window.location.search); return `<a class="table-action" href="/transactions/${id}/edit?return_to=${back}">Edit</a> · <a class="button secondary" href="/transactions/${id}/documents">View documents</a> · <a class="table-action" href="/documents/upload?business_id=${business.value}&transaction_id=${id}">Attach</a>`; }}
+], data: []});
 async function loadAccounts() {
     account.innerHTML = '<option value="">All accounts</option>';
     if (!business.value) return;

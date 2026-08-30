@@ -326,6 +326,20 @@ class SqliteTransactionDocumentRepository:
     def __init__(self, conn: sqlite3.Connection) -> None:
         self._conn = conn
 
+    def get_for_transaction(self, transaction_id: int) -> list[Document]:
+        cur = self._conn.cursor()
+        _execute(
+            cur,
+            """
+            SELECT d.* FROM documents AS d
+            JOIN accounting_transaction_documents AS atd ON atd.document_id = d.id
+            WHERE atd.transction_id = ? AND atd.deleted_at IS NULL AND d.deleted_at IS NULL
+            ORDER BY d.id
+            """,
+            (transaction_id,),
+        )
+        return [_row_to_document(row) for row in cur.fetchall()]
+
     def add(self, link: AccountingTransactionDocument) -> int:
         now = _utcnow()
         cur = self._conn.cursor()

@@ -12,15 +12,25 @@
         <a class="brand" href="{{ url_for('home') }}">accounting</a>
         <div class="nav-links">
             <a href="{{ url_for('home') }}">Home</a>
-            <a href="{{ url_for('dashboard') }}">Dashboard</a>
-            <a href="{{ url_for('chart_of_accounts') }}">Chart of accounts</a>
-            <a href="{{ url_for('transactions_dashboard') }}">Transactions</a>
-            <a href="{{ url_for('analytics_dashboard') }}">Analytics</a>
-            <a href="{{ url_for('upload_document') }}">Upload document</a>
-            <a href="{{ url_for('mileage_dashboard') }}">Mileage</a>
-            <a href="{{ url_for('about') }}">About</a>
-            <a href="{{ url_for('signup') }}">Add user</a>
-            <a href="/docs">API docs</a>
+            <a href="{{ url_for('dashboard') }}">Workspace</a>
+            <details class="nav-menu">
+                <summary>Dashboards</summary>
+                <div class="nav-menu-items">
+                    <a href="{{ url_for('transactions_dashboard') }}">Transactions</a>
+                    <a href="{{ url_for('analytics_dashboard') }}">Analytics</a>
+                    <a href="{{ url_for('mileage_dashboard') }}">Mileage</a>
+                </div>
+            </details>
+            <details class="nav-menu hamburger-menu">
+                <summary aria-label="Open additional navigation"><span aria-hidden="true">☰</span><span class="menu-label">Menu</span></summary>
+                <div class="nav-menu-items">
+                    <a href="{{ url_for('chart_of_accounts') }}">Chart of accounts</a>
+                    <a href="{{ url_for('upload_document') }}">Upload document</a>
+                    <a href="{{ url_for('about') }}">About</a>
+                    <a href="{{ url_for('signup') }}">Add user</a>
+                    <a href="/docs">API docs</a>
+                </div>
+            </details>
         </div>
     </nav>
 </header>
