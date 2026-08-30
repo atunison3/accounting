@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-heading"><p class="eyebrow">TRANSACTION {{ transaction.id }}</p><h1>Edit transaction</h1><p class="lead">Update the journal entry. Saving replaces its lines and preserves the database audit history.</p></section>
+<section class="form-card edit-card">
+{% if error %}<div class="notice error">{{ error }}</div>{% endif %}
+<form method="post" action="{{ url_for('update_transaction_form', transaction_id=transaction.id) }}" class="transaction-form">
+<div><label for="edit-business">Business ID</label><input id="edit-business" name="business_id" type="number" min="1" value="{{ transaction.business_id }}" required></div>
+<div><label for="edit-date">Date</label><input id="edit-date" name="transaction_date" type="date" value="{{ transaction.transaction_date }}" required></div>
+<div><label for="edit-currency">Currency</label><select id="edit-currency" name="currency_code">{% for code in ['USD', 'CAD', 'EUR', 'GBP', 'AUD', 'JPY'] %}<option value="{{ code }}" {% if transaction.currency_code == code %}selected{% endif %}>{{ code }}</option>{% endfor %}</select></div>
+<div><label for="edit-user">Updated by user ID</label><input id="edit-user" name="user_id" type="number" min="1" required></div>
+<div class="full"><label for="edit-description">Description</label><input id="edit-description" name="description" value="{{ transaction.description }}" required></div>
+<div class="full"><label>Transaction lines</label><div id="edit-lines">{% for line, account in line_data %}<div class="line-row"><input name="account_ids" type="number" min="1" value="{{ line.account_id }}" required><input name="amounts" type="number" min="0" step="0.01" value="{{ '%.2f'|format(line.amount_cents / 100) }}" required><select name="line_types"><option value="debit" {% if line.is_debit %}selected{% endif %}>Debit</option><option value="credit" {% if not line.is_debit %}selected{% endif %}>Credit</option></select><span class="account-result">{{ account.account_name if account else 'Account unavailable' }}</span></div>{% endfor %}</div></div>
+<div class="full actions"><button class="button primary" type="submit">Save transaction</button><a class="button secondary" href="{{ url_for('transactions_dashboard') }}?business_id={{ transaction.business_id }}">Cancel</a></div>
+</form>
+</section>
+{% endblock %}

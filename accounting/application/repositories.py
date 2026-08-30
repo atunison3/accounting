@@ -23,6 +23,15 @@ class TransactionRepository:
     def get_lines(self, transaction_id: int) -> list[TransactionLine]:
         raise NotImplementedError
 
+    def update(
+        self,
+        transaction_id: int,
+        transaction: AccountingTransaction,
+        lines: list[TransactionLine],
+        user_id: int,
+    ) -> None:
+        raise NotImplementedError
+
     def delete(self, transaction_id: int, user_id: int) -> None:
         raise NotImplementedError
 

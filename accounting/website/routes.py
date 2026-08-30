@@ -293,6 +293,71 @@ def api_transactions(  # noqa: PLR0913, PLR0917
     return JSONResponse([result.model_dump(mode="json") for result in results])
 
 
+@router.get("/transactions/{transaction_id}/edit", response_class=HTMLResponse, name="edit_transaction")
+def edit_transaction(request: Request, transaction_id: int) -> HTMLResponse:
+    with get_connection(_database_path(request)) as connection:
+        repository = SqliteTransactionRepository(connection)
+        transaction = repository.get_by_id(transaction_id)
+        lines = repository.get_lines(transaction_id)
+        accounts = SqliteAccountRepository(connection)
+        line_data = [(line, accounts.get_by_id(line.account_id)) for line in lines]
+    if transaction is None:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    return templates.TemplateResponse(
+        request=request,
+        name="edit_transaction.html",
+        context={"page_title": "Edit transaction", "transaction": transaction, "line_data": line_data, "error": None},
+    )
+
+
+@router.post(
+    "/transactions/{transaction_id}/edit",
+    response_class=HTMLResponse,
+    response_model=None,
+    name="update_transaction_form",
+)
+def update_transaction_form(  # noqa: PLR0913, PLR0917
+    request: Request,
+    transaction_id: int,
+    business_id: int = Form(...),
+    transaction_date: date = Form(...),  # noqa: B008
+    currency_code: str = Form("USD"),  # noqa: B008
+    description: str = Form(...),
+    account_ids: list[int] = Form(...),  # noqa: B008
+    amounts: list[Decimal] = Form(...),  # noqa: B008
+    line_types: list[str] = Form(...),  # noqa: B008
+    user_id: int = Form(...),
+    posting_reference: str | None = Form(None),
+) -> HTMLResponse | RedirectResponse:
+    try:
+        if not (len(account_ids) == len(amounts) == len(line_types)):
+            raise ValueError("Each transaction line needs an account, amount, and type.")
+        lines = [
+            TransactionLine(
+                transaction_id=transaction_id,
+                account_id=account_id,
+                amount_cents=_dollars_to_cents(amount),
+                is_debit=line_type == "debit",
+            )
+            for account_id, amount, line_type in zip(account_ids, amounts, line_types, strict=True)
+        ]
+        with get_connection(_database_path(request)) as connection:
+            AccountingService(SqliteTransactionRepository(connection)).update_transaction(
+                transaction_id,
+                transaction_date,
+                description,
+                lines,
+                user_id,
+                posting_reference,
+                business_id,
+                currency_code,
+            )
+    except Exception as exc:
+        LOGGER.exception("Transaction update failed transaction_id=%s", transaction_id)
+        return _dashboard(request, f"Could not update transaction: {exc}")
+    return RedirectResponse(url=f"/transactions?business_id={business_id}", status_code=303)
+
+
 @router.get("/chart-of-accounts", response_class=HTMLResponse, name="chart_of_accounts")
 def chart_of_accounts(request: Request, business_id: int | None = None) -> HTMLResponse:
     LOGGER.debug("Rendering chart of accounts business_id=%s", business_id)
@@ -506,6 +571,7 @@ def create_transaction_form(  # noqa: PLR0913, PLR0917
     request: Request,
     business_id: int = Form(...),
     transaction_date: str = Form(...),
+    currency_code: str = Form("USD"),  # noqa: B008
     description: str = Form(...),
     account_numbers: list[int] = Form(...),  # noqa: B008
     amounts: list[Decimal] = Form(...),  # noqa: B008
@@ -538,7 +604,9 @@ def create_transaction_form(  # noqa: PLR0913, PLR0917
         ]
         with get_connection(_database_path(request)) as connection:
             AccountingService(SqliteTransactionRepository(connection)).create_transaction(
+                business_id=business_id,
                 transaction_date=date.fromisoformat(transaction_date),
+                currency_code=currency_code,
                 description=description,
                 posting_reference=posting_reference or None,
                 lines=lines,

@@ -61,8 +61,10 @@ class Account(DatabaseModel):
 
 
 class AccountingTransaction(DatabaseModel):
+    business_id: int | None = None
     transaction_date: date
     description: str = Field(min_length=1)
+    currency_code: str = Field(default="USD", min_length=3, max_length=3, pattern=r"^[A-Z]{3}$")
     posting_reference: str | None = None
 
 
@@ -138,6 +140,7 @@ class TransactionEntry(BaseModel):
     transaction_id: int
     transaction_date: date
     description: str
+    currency_code: str
     posting_reference: str | None = None
     account_number: int
     account_name: str

@@ -23,13 +23,15 @@ class AccountingService:
     def __init__(self, repository: Any) -> None:
         self.repository = repository
 
-    def create_transaction(
+    def create_transaction(  # noqa: PLR0913, PLR0917
         self,
         transaction_date: date,
         description: str,
         lines: list[TransactionLine],
         user_id: int,
         posting_reference: str | None = None,
+        business_id: int | None = None,
+        currency_code: str = "USD",
     ) -> int:
         if len(lines) < 2:
             raise ValueError("A transaction must contain at least two transaction lines.")
@@ -40,8 +42,10 @@ class AccountingService:
             raise ValueError(f"Debits and credits must be equal. Debits: {total_debits}, Credits: {total_credits}.")
 
         transaction = AccountingTransaction(
+            business_id=business_id,
             transaction_date=transaction_date,
             description=description,
+            currency_code=currency_code,
             posting_reference=posting_reference,
             created_by=user_id,
             updated_by=user_id,
@@ -52,6 +56,35 @@ class AccountingService:
         else:
             add = self.repository.add
         return add(transaction=transaction, lines=lines, user_id=user_id)
+
+    def update_transaction(  # noqa: PLR0913, PLR0917
+        self,
+        transaction_id: int,
+        transaction_date: date,
+        description: str,
+        lines: list[TransactionLine],
+        user_id: int,
+        posting_reference: str | None = None,
+        business_id: int | None = None,
+        currency_code: str = "USD",
+    ) -> None:
+        if len(lines) < 2:
+            raise ValueError("A transaction must contain at least two transaction lines.")
+        total_debits = sum(line.amount_cents for line in lines if line.is_debit)
+        total_credits = sum(line.amount_cents for line in lines if not line.is_debit)
+        if total_debits != total_credits:
+            raise ValueError("Debits and credits must be equal.")
+        if self.get_transaction(transaction_id) is None:
+            raise ValueError(f"Transaction {transaction_id} does not exist.")
+        transaction = AccountingTransaction(
+            id=transaction_id,
+            business_id=business_id,
+            transaction_date=transaction_date,
+            description=description,
+            currency_code=currency_code,
+            posting_reference=posting_reference,
+        )
+        self.repository.update(transaction_id, transaction, lines, user_id)
 
     def list_transactions(  # noqa: PLR0913, PLR0917
         self,

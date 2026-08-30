@@ -44,7 +44,9 @@ class TransactionLineInput(BaseModel):
 
 
 class TransactionInput(BaseModel):
+    business_id: int = Field(gt=0)
     transaction_date: date
+    currency_code: str = Field(default="USD", min_length=3, max_length=3, pattern=r"^[A-Z]{3}$")
     description: str = Field(min_length=1)
     user_id: int = Field(gt=0)
     posting_reference: str | None = None
@@ -180,7 +182,9 @@ def create_app(db_path: str | Path = DEFAULT_DATABASE_PATH) -> FastAPI:  # noqa:
             with get_connection(path) as connection:
                 repository = SqliteTransactionRepository(connection)
                 transaction_id = AccountingService(repository).create_transaction(
+                    business_id=payload.business_id,
                     transaction_date=payload.transaction_date,
+                    currency_code=payload.currency_code,
                     description=payload.description,
                     posting_reference=payload.posting_reference,
                     lines=lines,

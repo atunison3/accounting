@@ -21,6 +21,7 @@ def create_connection(db_path: str | Path = DEFAULT_DATABASE_PATH) -> sqlite3.Co
     conn.executescript(SCHEMA_FILE_PATH.read_text(encoding="utf-8"))
     _remove_legacy_user_credential_column(conn)
     _migrate_transaction_business_id(conn)
+    _migrate_transaction_currency_code(conn)
     return conn
 
 
@@ -48,6 +49,13 @@ def _migrate_transaction_business_id(conn: sqlite3.Connection) -> None:
         )
         WHERE business_id IS NULL
         """)
+
+
+def _migrate_transaction_currency_code(conn: sqlite3.Connection) -> None:
+    """Add the default currency to databases created by older releases."""
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(accounting_transactions)")}
+    if "currency_code" not in columns:
+        conn.execute("ALTER TABLE accounting_transactions ADD COLUMN currency_code TEXT NOT NULL DEFAULT 'USD'")
 
 
 @contextmanager

@@ -14,7 +14,7 @@
         <div><label for="date-to">To date</label><input id="date-to" type="date"></div>
         <div class="filter-actions"><button class="button primary" id="apply-filters" type="button">Apply filters</button><button class="button secondary" id="clear-filters" type="button">Clear</button></div>
     </div>
-    <p class="filter-status" id="filter-status">Select a business to load transactions.</p>
+    <p class="filter-status" id="filter-status">Select a business to load transactions. The default date range is the last 30 days.</p>
 </section>
 <section class="table-card"><div id="transactions-table"></div></section>
 <script src="https://unpkg.com/tabulator-tables@6.3.1/dist/js/tabulator.min.js"></script>
@@ -26,11 +26,13 @@ const table = new Tabulator('#transactions-table', {
     layout: 'fitColumns', placeholder: 'Select a business to see transactions.',
     columns: [
         {title: 'Date', field: 'transaction_date', sorter: 'date'},
+        {title: 'Currency', field: 'currency_code', width: 95},
         {title: 'Description', field: 'description', minWidth: 180},
         {title: 'Account', field: 'account_number', formatter: (cell) => `${cell.getValue()} · ${cell.getData().account_name}`},
         {title: 'Debit', field: 'amount_cents', hozAlign: 'right', formatter: debitFormatter},
         {title: 'Credit', field: 'amount_cents', hozAlign: 'right', formatter: creditFormatter},
         {title: 'Reference', field: 'posting_reference'},
+        {title: '', field: 'transaction_id', width: 70, formatter: (cell) => `<a class="table-action" href="/transactions/${cell.getValue()}/edit">Edit</a>`},
     ],
     data: []
 });

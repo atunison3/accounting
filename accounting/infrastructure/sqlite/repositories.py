@@ -128,8 +128,10 @@ def _row_to_account(row: sqlite3.Row) -> Account:
 def _row_to_transaction(row: sqlite3.Row) -> AccountingTransaction:
     return AccountingTransaction(
         id=row["id"],
+        business_id=row["business_id"],
         transaction_date=row["transaction_date"],
         description=row["description"],
+        currency_code=row["currency_code"],
         posting_reference=row["posting_reference"],
         created_at=row["created_at"],
         created_by=row["created_by"],
@@ -409,13 +411,15 @@ class SqliteTransactionRepository(TransactionRepository):
             cur,
             """
             INSERT INTO accounting_transactions (
-                transaction_date, description, posting_reference,
-                created_by
-            ) VALUES (?, ?, ?, ?)
+                business_id, transaction_date, description, currency_code,
+                posting_reference, created_by
+            ) VALUES (?, ?, ?, ?, ?, ?)
             """,
             (
+                transaction.business_id,
                 transaction.transaction_date.isoformat(),
                 transaction.description,
+                transaction.currency_code,
                 transaction.posting_reference,
                 user_id,
             ),
@@ -456,6 +460,55 @@ class SqliteTransactionRepository(TransactionRepository):
         )
         row = cur.fetchone()
         return _row_to_transaction(row) if row else None
+
+    def update(
+        self,
+        transaction_id: int,
+        transaction: AccountingTransaction,
+        lines: list[TransactionLine],
+        user_id: int,
+    ) -> None:
+        now = _utcnow()
+        cur = self._conn.cursor()
+        _execute(
+            cur,
+            """
+            UPDATE accounting_transactions
+            SET business_id = ?, transaction_date = ?, description = ?,
+                currency_code = ?, posting_reference = ?, updated_at = ?, updated_by = ?
+            WHERE id = ? AND deleted_at IS NULL
+            """,
+            (
+                transaction.business_id,
+                transaction.transaction_date.isoformat(),
+                transaction.description,
+                transaction.currency_code,
+                transaction.posting_reference,
+                now,
+                user_id,
+                transaction_id,
+            ),
+        )
+        _execute(
+            cur,
+            """
+            UPDATE transaction_lines
+            SET deleted_at = ?, deleted_by = ?, updated_at = ?, updated_by = ?
+            WHERE transaction_id = ? AND deleted_at IS NULL
+            """,
+            (now, user_id, now, user_id, transaction_id),
+        )
+        for line in lines:
+            _execute(
+                cur,
+                """
+                INSERT INTO transaction_lines (
+                    transaction_id, account_id, amount_cents, is_debit,
+                    created_by
+                ) VALUES (?, ?, ?, ?, ?)
+                """,
+                (transaction_id, line.account_id, line.amount_cents, _bool_to_int(line.is_debit), user_id),
+            )
 
     def get_lines(self, transaction_id: int) -> list[TransactionLine]:
         cur = self._conn.cursor()
@@ -501,7 +554,7 @@ class SqliteTransactionRepository(TransactionRepository):
             cur,
             """
             SELECT t.id AS transaction_id, t.transaction_date, t.description,
-                   t.posting_reference, a.account_number, a.account_name,
+                   t.currency_code, t.posting_reference, a.account_number, a.account_name,
                    l.amount_cents, l.is_debit
             FROM accounting_transactions AS t
             JOIN transaction_lines AS l ON l.transaction_id = t.id
@@ -524,6 +577,7 @@ class SqliteTransactionRepository(TransactionRepository):
                 transaction_id=row["transaction_id"],
                 transaction_date=row["transaction_date"],
                 description=row["description"],
+                currency_code=row["currency_code"],
                 posting_reference=row["posting_reference"],
                 account_number=row["account_number"],
                 account_name=row["account_name"],

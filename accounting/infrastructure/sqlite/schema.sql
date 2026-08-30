@@ -149,7 +149,7 @@ CREATE TABLE IF NOT EXISTS accounting_transactions (
     transaction_date   TEXT    NOT NULL,
     description        TEXT    NOT NULL,
     currency_code      TEXT    NOT NULL DEFAULT 'USD'
-        CHECK (length(currency_code) = 3),
+        CHECK (length(currency_code) = 3 AND currency_code = upper(currency_code)),
     posting_reference  TEXT,
 
     created_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,

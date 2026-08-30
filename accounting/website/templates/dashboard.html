@@ -64,6 +64,7 @@
         <form method="post" action="{{ url_for('create_transaction_form') }}" class="transaction-form">
             <div><label for="transaction-business">Business ID</label><input id="transaction-business" name="business_id" type="number" min="1" required></div>
             <div><label for="transaction-date">Date</label><input id="transaction-date" name="transaction_date" type="date" required></div>
+            <div><label for="transaction-currency">Currency</label><select id="transaction-currency" name="currency_code"><option value="USD" selected>USD — US Dollar</option><option value="CAD">CAD — Canadian Dollar</option><option value="EUR">EUR — Euro</option><option value="GBP">GBP — Pound Sterling</option><option value="AUD">AUD — Australian Dollar</option><option value="JPY">JPY — Japanese Yen</option><option value="TBH">TBH — Thai Baht</option></select></div>
             <div><label for="transaction-user">User ID</label><input id="transaction-user" name="user_id" type="number" min="1" required></div>
             <div class="full"><label for="transaction-description">Description</label><input id="transaction-description" name="description" required></div>
             <div class="full"><label>Transaction lines</label><div id="transaction-lines">
