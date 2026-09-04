@@ -77,13 +77,24 @@ h2 { line-height: 1.15; letter-spacing: -.03em; }
 .notice.error { background: #fff0ef; border-left-color: #b83b31; color: #8e2c24; }
 .selector-card, .table-card { background: var(--white); border: 1px solid var(--line); border-radius: 10px; margin-bottom: 22px; padding: 24px; }
 .business-selector { align-items: end; display: flex; flex-wrap: wrap; gap: 12px; }
-.filters { display: grid; gap: 14px; grid-template-columns: repeat(4, 1fr); }
+.filters { display: grid; gap: 14px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.filters > div { min-width: 0; }
 .filters label { display: grid; font-size: .9rem; font-weight: 700; gap: 5px; }
-.filters input, .filters select { border: 1px solid var(--line); border-radius: 6px; font: inherit; min-width: 0; padding: 10px; }
+.filters input, .filters select { border: 1px solid var(--line); border-radius: 6px; font: inherit; min-width: 0; max-width: 100%; width: 100%; padding: 10px; }
 .field-help { color: var(--muted); font-size: .75rem; margin-top: 4px; }
-.filter-actions { align-items: end; display: flex; gap: 8px; }
+.filter-actions { align-items: end; display: flex; flex-wrap: wrap; gap: 8px; }
 .filter-actions .button { cursor: pointer; font: inherit; }
-@media (max-width: 800px) { .filters { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 800px) { .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) {
+    .filters { grid-template-columns: minmax(0, 1fr); }
+    .selector-card, .table-card { padding: 16px; }
+    .filters input, .filters select { display: block; box-sizing: border-box; font-size: 16px; width: 100%; min-width: 0; max-width: 100%; }
+    .filters label { overflow-wrap: anywhere; }
+    .filters input[type="date"] { -webkit-appearance: none; appearance: none; min-height: 44px; }
+    .filters .filter-actions .button { flex: 1 1 120px; }
+}
+/* Tabulator scrolls its columns internally; never widen the page to fit them. */
+#transactions-table { width: 100%; max-width: 100%; min-width: 0; }
 .business-selector label { display: grid; font-weight: 700; gap: 6px; width: min(100%, 420px); }
 .business-selector select { border: 1px solid var(--line); border-radius: 6px; font: inherit; padding: 10px; }
 .table-heading { align-items: center; display: flex; justify-content: space-between; }
@@ -100,6 +111,12 @@ h2 { line-height: 1.15; letter-spacing: -.03em; }
 .statement-heading p { color: var(--muted); margin: 4px 0 12px; }
 .balance-sheet-grid { display: grid; gap: 22px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 22px; }
 .statement-table { min-width: 0; }
+.balance-report .balance-sheet-grid { align-items: start; }
+.balance-report .statement-table { table-layout: fixed; }
+.balance-report .statement-table th:first-child { width: 65%; }
+.balance-report .statement-table td:first-child { overflow-wrap: anywhere; }
+.balance-report .amount { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.balance-report .notice { margin: 22px 0 0; }
 .statement-table .amount { text-align: right; }
 .statement-table tfoot th { border-top: 2px solid var(--ink); color: var(--ink); }
 @media (max-width: 700px) { .balance-sheet-grid { grid-template-columns: 1fr; } }

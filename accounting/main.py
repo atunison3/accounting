@@ -29,6 +29,7 @@ from accounting.domain.models import (
 )
 from accounting.infrastructure.sqlite.connection import DEFAULT_DATABASE_PATH, get_connection
 from accounting.website.routes import router as website_router
+from accounting.website.income_statement import router as income_statement_router
 from accounting.infrastructure.sqlite.repositories import (
     SqliteAccountRepository,
     SqliteBusinessRepository,
@@ -89,6 +90,7 @@ def create_app(db_path: str | Path = DEFAULT_DATABASE_PATH) -> FastAPI:  # noqa:
     app.state.db_path = db_path
     app.mount("/static", StaticFiles(directory=WEBSITE_STATIC_DIR), name="static")
     app.include_router(website_router)
+    app.include_router(income_statement_router)
 
     @app.middleware("http")
     async def log_requests(request: Request, call_next: Any) -> Any:

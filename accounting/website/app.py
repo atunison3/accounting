@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 
 from accounting.infrastructure.sqlite.connection import DEFAULT_DATABASE_PATH
 from .routes import router
+from .income_statement import router as income_statement_router
 
 PACKAGE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = PACKAGE_DIR / "static"
@@ -23,6 +24,7 @@ def create_app() -> FastAPI:
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     LOGGER.info("Mounted web static files directory=%s", STATIC_DIR)
     app.include_router(router)
+    app.include_router(income_statement_router)
     LOGGER.info("Registered Accounting web routes")
     return app
 

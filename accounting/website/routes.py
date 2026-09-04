@@ -45,6 +45,14 @@ TEMPLATE_DIR = PACKAGE_DIR / "templates"
 
 router = APIRouter()
 templates = Jinja2Templates(directory=TEMPLATE_DIR)
+
+
+def stylesheet_version() -> str:
+    """Invalidate browser CSS caches whenever the stylesheet changes."""
+    return str((PACKAGE_DIR / "static" / "css" / "style.css").stat().st_mtime_ns)
+
+
+templates.env.globals["stylesheet_version"] = stylesheet_version
 LOGGER = logging.getLogger("accounting.api.website.routes")
 DOCUMENTS_DIRECTORY = Path.home() / ".app_data" / "accounting" / "documents"
 
@@ -377,8 +385,8 @@ def balance_sheet_pdf(request: Request, business_id: int, statement_date: date |
     document = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
     story = [
         Paragraph(business.title, styles["Title"]),
-        Paragraph("Balance Sheet", styles["Heading2"]),
-        Paragraph(f"As of {selected_date.isoformat()} · Amounts in USD", styles["Normal"]),
+        Paragraph("Balance Sheet", styles["Title"]),
+        Paragraph(f"As of {selected_date:%B %d, %Y} · Amounts in USD", styles["Normal"]),
         Spacer(1, 16),
     ]
 
@@ -387,18 +395,21 @@ def balance_sheet_pdf(request: Request, business_id: int, statement_date: date |
         table.setStyle(
             TableStyle(
                 [
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#087f70")),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e6f3f0")),
                     ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
                     ("ALIGN", (1, 0), (1, -1), "RIGHT"),
-                    ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#dce4e8")),
-                    ("PADDING", (0, 0), (-1, -1), 6),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("LINEABOVE", (0, -1), (-1, -1), 1, colors.black),
+                    ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+                    ("TOPPADDING", (0, 0), (-1, -1), 9),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 9),
                 ]
             )
         )
         return table
 
-    half_widths = [2.55 * inch, 1.2 * inch]
+    column_width = (document.width - 18) / 2
+    half_widths = [column_width - 90, 90]
     left = make_table(
         account_rows("Assets", statement["assets"], "Total assets", int(statement["assets_total_usd_cents"])),
         half_widths,
@@ -421,8 +432,20 @@ def balance_sheet_pdf(request: Request, business_id: int, statement_date: date |
     equity_total_amount = format_money(int(statement["owner_equity_total_usd_cents"]))
     equity_rows.append([equity_total_label, equity_total_amount])
     equity_table = make_table(equity_rows, half_widths)
-    right_column = Table([[right], [equity_table]], colWidths=[3.75 * inch])
-    story.append(Table([[left, right_column]], colWidths=[3.75 * inch, 3.75 * inch], hAlign="LEFT"))
+    container_style = TableStyle(
+        [
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+            ("TOPPADDING", (0, 0), (-1, -1), 0),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+        ]
+    )
+    right_column = Table([[right], [Spacer(1, 18)], [equity_table]], colWidths=[column_width])
+    right_column.setStyle(container_style)
+    report = Table([[left, "", right_column]], colWidths=[column_width, 18, column_width], hAlign="LEFT")
+    report.setStyle(container_style)
+    story.append(report)
     story.append(Spacer(1, 12))
     story.append(
         Paragraph(

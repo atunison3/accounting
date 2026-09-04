@@ -1,14 +1,47 @@
 {% extends "base.html" %}
-{% macro money(cents) -%}{% if cents < 0 %}({{ '$%.2f'|format((-cents) / 100) }}){% else %}${{ '%.2f'|format(cents / 100) }}{% endif %}{%- endmacro %}
+{% macro money(cents) -%}
+{% if cents < 0 %}(${{ '{:,.2f}'.format(-cents / 100) }}){% else %}${{ '{:,.2f}'.format(cents / 100) }}{% endif %}
+{%- endmacro %}
+{% macro account_rows(rows) %}
+{% for row in rows %}<tr><td>{{ row.account_number }} · {{ row.account_name }}</td><td class="amount">{{ money(row.balance_usd_cents) }}</td></tr>{% endfor %}
+{% endmacro %}
 {% block content %}
 <section class="page-heading"><p class="eyebrow">FINANCIAL STATEMENT</p><h1>Balance Sheet</h1></section>
-<section class="selector-card"><form class="business-selector" method="get" action="{{ url_for('balance_sheet') }}"><label>Business<select name="business_id" required><option value="">Select a business</option>{% for item in businesses %}<option value="{{ item.id }}"{% if business and item.id == business.id %} selected{% endif %}>{{ item.title }}</option>{% endfor %}</select></label><label>Statement date<input name="statement_date" type="date" value="{{ statement_date }}" required></label><button class="button primary" type="submit">Prepare statement</button></form></section>
-{% if business and statement %}
-<section class="statement-heading"><h2>{{ business.title }}</h2><h3>Balance Sheet</h3><p>As of {{ statement_date }}</p><p class="tag">Amounts in USD</p><p><a class="button secondary" href="{{ url_for('balance_sheet_pdf') }}?business_id={{ business.id }}&amp;statement_date={{ statement_date }}">Print / download PDF</a></p></section>
-<section class="balance-sheet-grid">
-<article class="table-card"><h2>Assets</h2><table class="statement-table"><thead><tr><th>Account</th><th class="amount">Balance (USD)</th></tr></thead><tbody>{% for row in statement.assets %}<tr><td>{{ row.account_number }} · {{ row.account_name }}</td><td class="amount">{{ money(row.balance_usd_cents) }}</td></tr>{% endfor %}</tbody><tfoot><tr><th>Total assets</th><th class="amount">{{ money(statement.assets_total_usd_cents) }}</th></tr></tfoot></table></article>
-<article class="table-card"><h2>Liabilities</h2><table class="statement-table"><thead><tr><th>Account</th><th class="amount">Balance (USD)</th></tr></thead><tbody>{% for row in statement.liabilities %}<tr><td>{{ row.account_number }} · {{ row.account_name }}</td><td class="amount">{{ money(row.balance_usd_cents) }}</td></tr>{% endfor %}</tbody><tfoot><tr><th>Total liabilities</th><th class="amount">{{ money(statement.liabilities_total_usd_cents) }}</th></tr></tfoot></table><h2>Owner's Equity</h2><table class="statement-table"><thead><tr><th>Account</th><th class="amount">Balance (USD)</th></tr></thead><tbody>{% for row in statement.capital %}<tr><td>{{ row.account_number }} · {{ row.account_name }}</td><td class="amount">{{ money(row.balance_usd_cents) }}</td></tr>{% endfor %}<tr><td>Current Period Earnings (Loss)</td><td class="amount">{{ money(statement.current_period_earnings_usd_cents) }}</td></tr>{% for row in statement.draws %}<tr><td>{{ row.account_number }} · {{ row.account_name }}</td><td class="amount">{{ money(row.balance_usd_cents) }}</td></tr>{% endfor %}</tbody><tfoot><tr><th>Total owner's equity</th><th class="amount">{{ money(statement.owner_equity_total_usd_cents) }}</th></tr></tfoot></table><p><strong>Total liabilities and owner's equity: {{ money(statement.liabilities_equity_total_usd_cents) }}</strong></p></article>
+<section class="selector-card">
+<form class="business-selector" method="get" action="{{ url_for('balance_sheet') }}">
+<label>Business<select name="business_id" required><option value="">Select a business</option>{% for item in businesses %}<option value="{{ item.id }}"{% if business and item.id == business.id %} selected{% endif %}>{{ item.title }}</option>{% endfor %}</select></label>
+<label>Statement date<input name="statement_date" type="date" value="{{ statement_date }}" required></label>
+<button class="button primary" type="submit">Prepare statement</button>
+</form>
 </section>
-{% if statement.assets_total_usd_cents == statement.liabilities_equity_total_usd_cents %}<div class="notice success">Statement is in balance: both sides equal {{ money(statement.assets_total_usd_cents) }} USD.</div>{% else %}<div class="notice error">Statement is out of balance by {{ money((statement.assets_total_usd_cents - statement.liabilities_equity_total_usd_cents)|abs) }} USD.</div>{% endif %}
+{% if business and statement %}
+<section class="table-card balance-report">
+<div class="statement-heading"><h2>{{ business.title }}</h2><h3>Balance Sheet</h3><p>As of {{ statement_date.strftime('%B %d, %Y') }}</p><p>Amounts in USD</p></div>
+<p class="chart-actions"><a class="button secondary" href="{{ url_for('balance_sheet_pdf') }}?business_id={{ business.id }}&amp;statement_date={{ statement_date }}">Print / download PDF</a></p>
+<div class="balance-sheet-grid">
+<table class="statement-table">
+<thead><tr><th>Account</th><th class="amount">Amount (USD)</th></tr></thead>
+<tbody><tr class="category-row"><th colspan="2">Assets</th></tr>{{ account_rows(statement.assets) }}</tbody>
+<tfoot><tr><th>Total assets</th><th class="amount">{{ money(statement.assets_total_usd_cents) }}</th></tr></tfoot>
+</table>
+<table class="statement-table">
+<thead><tr><th>Account</th><th class="amount">Amount (USD)</th></tr></thead>
+<tbody>
+<tr class="category-row"><th colspan="2">Liabilities</th></tr>{{ account_rows(statement.liabilities) }}
+<tr><th>Total liabilities</th><td class="amount"><strong>{{ money(statement.liabilities_total_usd_cents) }}</strong></td></tr>
+<tr class="category-row"><th colspan="2">Owner's Equity</th></tr>{{ account_rows(statement.capital) }}
+<tr><td>Current Period Earnings (Loss)</td><td class="amount">{{ money(statement.current_period_earnings_usd_cents) }}</td></tr>
+{{ account_rows(statement.draws) }}
+<tr><th>Total owner's equity</th><td class="amount"><strong>{{ money(statement.owner_equity_total_usd_cents) }}</strong></td></tr>
+</tbody>
+<tfoot><tr><th>Total liabilities &amp; equity</th><th class="amount">{{ money(statement.liabilities_equity_total_usd_cents) }}</th></tr></tfoot>
+</table>
+</div>
+{% if statement.assets_total_usd_cents == statement.liabilities_equity_total_usd_cents %}
+<p class="notice success" role="status">Statement is in balance: both sides equal {{ money(statement.assets_total_usd_cents) }} USD.</p>
+{% else %}
+<p class="notice error" role="status">Statement is out of balance by {{ money((statement.assets_total_usd_cents - statement.liabilities_equity_total_usd_cents)|abs) }} USD.</p>
+{% endif %}
+</section>
 {% endif %}
 {% endblock %}

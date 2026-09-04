@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ page_title }} | Accounting</title>
-    <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}?v={{ stylesheet_version() }}">
 </head>
 <body>
 <header class="site-header">
@@ -26,6 +26,7 @@
                 <div class="nav-menu-items">
                     <a href="{{ url_for('chart_of_accounts') }}">Chart of accounts</a>
                     <a href="{{ url_for('balance_sheet') }}">Balance Sheet</a>
+                    <a href="{{ url_for('income_statement_page') }}">Income Statement</a>
                     <a href="{{ url_for('upload_document') }}">Upload document</a>
                     <a href="{{ url_for('about') }}">About</a>
                     <a href="{{ url_for('signup') }}">Add user</a>
