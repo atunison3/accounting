@@ -183,14 +183,21 @@ class AnalyticsService:
                 continue
             amount = convert_currency(entry.amount_cents, entry.currency_code)
             signed = amount if entry.is_debit == account.is_debit else -amount
-            if account.account_type in {AccountType.ASSET, AccountType.LIABILITY, AccountType.EQUITY}:
+            if account.account_type in {
+                AccountType.ASSET,
+                AccountType.CONTRA_ASSET,
+                AccountType.LIABILITY,
+                AccountType.EQUITY,
+            }:
                 balances[account.account_number] += signed
             elif account.account_type == AccountType.REVENUE:
+                balances[account.account_number] += signed
                 net_income += signed
             elif account.account_type == AccountType.EXPENSE:
+                balances[account.account_number] += signed
                 net_income -= signed
 
-        def rows(account_type: AccountType) -> list[dict[str, int | str]]:
+        def rows(account_types: set[AccountType]) -> list[dict[str, int | str]]:
             return [
                 {
                     "account_number": account.account_number,
@@ -198,20 +205,47 @@ class AnalyticsService:
                     "balance_usd_cents": balances[account.account_number],
                 }
                 for account in accounts.values()
-                if account.account_type == account_type
+                if account.account_type in account_types
             ]
 
-        assets = rows(AccountType.ASSET)
-        liabilities = rows(AccountType.LIABILITY)
-        equity = rows(AccountType.EQUITY)
-        if net_income:
-            equity.append({"account_number": 0, "account_name": "Net income (loss)", "balance_usd_cents": net_income})
+        assets = rows({AccountType.ASSET, AccountType.CONTRA_ASSET})
+        liabilities = rows({AccountType.LIABILITY})
+        equity_accounts = [account for account in accounts.values() if account.account_type == AccountType.EQUITY]
+        capital_accounts = [account for account in equity_accounts if "draw" not in account.account_name.lower()]
+        draw_accounts = [account for account in equity_accounts if "draw" in account.account_name.lower()]
+
+        def account_rows(selected_accounts: list[Account], draw: bool = False) -> list[dict[str, int | str]]:
+            return [
+                {
+                    "account_number": account.account_number,
+                    "account_name": account.account_name,
+                    "balance_usd_cents": (
+                        -balances[account.account_number] if draw else balances[account.account_number]
+                    ),
+                }
+                for account in selected_accounts
+            ]
+
+        assets = rows({AccountType.ASSET, AccountType.CONTRA_ASSET})
+        liabilities = rows({AccountType.LIABILITY})
+        capital = account_rows(capital_accounts)
+        draws = account_rows(draw_accounts, draw=True)
+        assets_total = sum(int(row["balance_usd_cents"]) for row in assets)
+        capital_balance = sum(balances[account.account_number] for account in capital_accounts)
+        draw_balance = sum(balances[account.account_number] for account in draw_accounts)
+        owner_equity_total = capital_balance + net_income - draw_balance
         return {
             "assets": assets,
             "liabilities": liabilities,
-            "equity": equity,
-            "assets_total_usd_cents": sum(int(row["balance_usd_cents"]) for row in assets),
-            "liabilities_equity_total_usd_cents": sum(int(row["balance_usd_cents"]) for row in liabilities + equity),
+            "capital": capital,
+            "draws": draws,
+            "current_period_earnings_usd_cents": net_income,
+            "assets_total_usd_cents": assets_total,
+            "liabilities_total_usd_cents": sum(int(row["balance_usd_cents"]) for row in liabilities),
+            "owner_equity_total_usd_cents": owner_equity_total,
+            "liabilities_equity_total_usd_cents": (
+                sum(int(row["balance_usd_cents"]) for row in liabilities) + owner_equity_total
+            ),
         }
 
     def documentless_transaction_percentage(self, business_id: int) -> dict[str, int | float]:

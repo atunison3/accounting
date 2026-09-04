@@ -1,7 +1,7 @@
 import unittest
 from datetime import date
 
-from accounting.application.services import AccountingService
+from accounting.application.services import AccountingService, AnalyticsService
 from accounting.domain.currency import convert_currency
 from pydantic import ValidationError
 
@@ -87,6 +87,48 @@ class TestTransactionCurrency(unittest.TestCase):
         self.assertEqual(convert_currency(3300, "THB"), 100)
         self.assertEqual(convert_currency(100, "USD", "THB"), 3300)
         self.assertEqual(convert_currency(3300, "TBH"), 100)
+
+    def test_balance_sheet_shows_current_period_loss_in_equity(self) -> None:
+        capital_id = SqliteAccountRepository(self.connection).add(
+            Account(
+                business_id=self.business_id,
+                account_number=3000,
+                account_name="Owner's Capital",
+                account_type=AccountType.EQUITY,
+                is_debit=False,
+                created_by=self.user_id,
+            )
+        )
+        expense_id = SqliteAccountRepository(self.connection).add(
+            Account(
+                business_id=self.business_id,
+                account_number=5100,
+                account_name="Supplies Expense",
+                account_type=AccountType.EXPENSE,
+                created_by=self.user_id,
+            )
+        )
+        service = AccountingService(SqliteTransactionRepository(self.connection))
+        for description, debit_id, credit_id in [
+            ("Owner contribution", self.cash_id, capital_id),
+            ("Supplies purchase", expense_id, self.cash_id),
+        ]:
+            service.create_transaction(
+                business_id=self.business_id,
+                transaction_date=date(2026, 8, 18),
+                description=description,
+                lines=[
+                    TransactionLine(transaction_id=0, account_id=debit_id, amount_cents=254677, is_debit=True),
+                    TransactionLine(transaction_id=0, account_id=credit_id, amount_cents=254677, is_debit=False),
+                ],
+                user_id=self.user_id,
+            )
+        statement = AnalyticsService(
+            SqliteTransactionRepository(self.connection), SqliteAccountRepository(self.connection)
+        ).balance_sheet(self.business_id, date(2026, 8, 30))
+        self.assertEqual(statement["current_period_earnings_usd_cents"], -254677)
+        self.assertEqual(statement["owner_equity_total_usd_cents"], 0)
+        self.assertEqual(statement["assets_total_usd_cents"], statement["liabilities_equity_total_usd_cents"])
 
     def test_currency_code_must_be_three_uppercase_letters(self) -> None:
         with self.assertRaises(ValidationError):

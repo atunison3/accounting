@@ -333,6 +333,114 @@ def balance_sheet(request: Request, business_id: int | None = None, statement_da
     )
 
 
+@router.get("/balance-sheet/pdf", name="balance_sheet_pdf")
+def balance_sheet_pdf(request: Request, business_id: int, statement_date: date | None = None) -> StreamingResponse:
+    selected_date = statement_date or date.today()
+    with get_connection(_database_path(request)) as connection:
+        business = SqliteBusinessRepository(connection).get_by_id(business_id)
+        statement = (
+            AnalyticsService(
+                SqliteTransactionRepository(connection), SqliteAccountRepository(connection)
+            ).balance_sheet(business_id, selected_date)
+            if business is not None
+            else None
+        )
+    if business is None or statement is None:
+        raise HTTPException(status_code=404, detail="Business not found")
+
+    styles = getSampleStyleSheet()
+
+    def format_money(cents: int) -> str:
+        return f"(${abs(cents) / 100:,.2f})" if cents < 0 else f"${cents / 100:,.2f}"
+
+    def account_rows(
+        title: str,
+        rows: list[dict[str, int | str]],
+        total_label: str | None = None,
+        total_cents: int | None = None,
+    ) -> list[list[object]]:
+        result: list[list[object]] = [[title, "Balance (USD)"]]
+        result.extend(
+            [
+                [
+                    Paragraph(f"{row['account_number']} · {row['account_name']}", styles["Normal"]),
+                    format_money(int(row["balance_usd_cents"])),
+                ]
+                for row in rows
+            ]
+        )
+        if total_label is not None and total_cents is not None:
+            result.append([Paragraph(total_label, styles["Normal"]), format_money(total_cents)])
+        return result
+
+    buffer = BytesIO()
+    document = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
+    story = [
+        Paragraph(business.title, styles["Title"]),
+        Paragraph("Balance Sheet", styles["Heading2"]),
+        Paragraph(f"As of {selected_date.isoformat()} · Amounts in USD", styles["Normal"]),
+        Spacer(1, 16),
+    ]
+
+    def make_table(rows: list[list[object]], col_widths: list[float]) -> Table:
+        table = Table(rows, colWidths=col_widths)
+        table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#087f70")),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("ALIGN", (1, 0), (1, -1), "RIGHT"),
+                    ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#dce4e8")),
+                    ("PADDING", (0, 0), (-1, -1), 6),
+                ]
+            )
+        )
+        return table
+
+    half_widths = [2.55 * inch, 1.2 * inch]
+    left = make_table(
+        account_rows("Assets", statement["assets"], "Total assets", int(statement["assets_total_usd_cents"])),
+        half_widths,
+    )
+    right = make_table(
+        account_rows(
+            "Liabilities",
+            statement["liabilities"],
+            "Total liabilities",
+            int(statement["liabilities_total_usd_cents"]),
+        ),
+        half_widths,
+    )
+    equity_rows = account_rows("Owner's Equity", statement["capital"])
+    earnings_label = Paragraph("Current Period Earnings (Loss)", styles["Normal"])
+    earnings_amount = format_money(int(statement["current_period_earnings_usd_cents"]))
+    equity_rows.append([earnings_label, earnings_amount])
+    equity_rows.extend(account_rows("Owner's Draw", statement["draws"])[1:])
+    equity_total_label = Paragraph("Total owner's equity", styles["Normal"])
+    equity_total_amount = format_money(int(statement["owner_equity_total_usd_cents"]))
+    equity_rows.append([equity_total_label, equity_total_amount])
+    equity_table = make_table(equity_rows, half_widths)
+    right_column = Table([[right], [equity_table]], colWidths=[3.75 * inch])
+    story.append(Table([[left, right_column]], colWidths=[3.75 * inch, 3.75 * inch], hAlign="LEFT"))
+    story.append(Spacer(1, 12))
+    story.append(
+        Paragraph(
+            f"Total assets: {format_money(int(statement['assets_total_usd_cents']))} · "
+            "Total liabilities and owner's equity: "
+            f"{format_money(int(statement['liabilities_equity_total_usd_cents']))}",
+            styles["Normal"],
+        )
+    )
+    document.build(story)
+    buffer.seek(0)
+    return StreamingResponse(
+        buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="balance-sheet-{business_id}-{selected_date}.pdf"'},
+    )
+
+
 @router.get("/mileage", response_class=HTMLResponse, name="mileage_dashboard")
 def mileage_dashboard(request: Request, business_id: int | None = None, year: int | None = None) -> HTMLResponse:
     with get_connection(_database_path(request)) as connection:
