@@ -11,12 +11,12 @@
         <div><label for="has-document">Documents</label><select id="has-document"><option value="">All transactions</option><option value="true">With document</option><option value="false">Without document</option></select></div>
         <div><label for="amount-min">Minimum amount ($)</label><input id="amount-min" type="number" min="0" step="0.01"></div>
         <div><label for="amount-max">Maximum amount ($)</label><input id="amount-max" type="number" min="0" step="0.01"></div>
-        <div><label for="days">Last N days</label><input id="days" type="number" min="1" value="30"></div>
+        <div><label for="days">Last N days</label><input id="days" type="number" min="1" value="90"></div>
         <div><label for="date-from">From date</label><input id="date-from" type="date"></div>
         <div><label for="date-to">To date</label><input id="date-to" type="date"></div>
         <div class="filter-actions"><button class="button primary" id="apply-filters" type="button">Apply filters</button><button class="button secondary" id="clear-filters" type="button">Clear</button></div>
     </div>
-    <p class="filter-status" id="filter-status">Select a business to load transactions. The default date range is the last 30 days.</p>
+    <p class="filter-status" id="filter-status">Select a business to load transactions. The default date range is the last 90 days.</p>
 </section>
 <section class="table-card"><div id="transactions-table"></div></section>
 <script src="https://unpkg.com/tabulator-tables@6.3.1/dist/js/tabulator.min.js"></script>
@@ -45,7 +45,7 @@ async function loadAccounts() {
 }
 async function queryTransactions() {
     if (!business.value) { status.textContent = 'Select a business to load transactions.'; table.clearData(); return; }
-    const params = new URLSearchParams({business_id: business.value, days: document.getElementById('days').value || '30'});
+    const params = new URLSearchParams({business_id: business.value, days: document.getElementById('days').value || '90'});
     const fields = {account_number: account.value, entry_type: document.getElementById('entry-type').value, currency_code: document.getElementById('currency-code').value, has_document: document.getElementById('has-document').value, amount_min: document.getElementById('amount-min').value, amount_max: document.getElementById('amount-max').value, date_from: document.getElementById('date-from').value, date_to: document.getElementById('date-to').value};
     Object.entries(fields).forEach(([key, value]) => { if (value) params.set(key, value); });
     window.history.replaceState({}, '', `/transactions?${params}`);
@@ -58,7 +58,7 @@ async function queryTransactions() {
 }
 business.addEventListener('change', async () => { await loadAccounts(); await queryTransactions(); });
 document.getElementById('apply-filters').addEventListener('click', queryTransactions);
-document.getElementById('clear-filters').addEventListener('click', async () => { document.querySelectorAll('.filters input').forEach(input => input.value = input.id === 'days' ? '30' : ''); document.getElementById('entry-type').value = ''; document.getElementById('currency-code').value = ''; document.getElementById('has-document').value = ''; account.value = ''; await queryTransactions(); });
+document.getElementById('clear-filters').addEventListener('click', async () => { document.querySelectorAll('.filters input').forEach(input => input.value = input.id === 'days' ? '90' : ''); document.getElementById('entry-type').value = ''; document.getElementById('currency-code').value = ''; document.getElementById('has-document').value = ''; account.value = ''; await queryTransactions(); });
 
 // Restore the dashboard state after returning from an edit (and load it immediately).
 (async function restoreFilters() {
@@ -70,7 +70,7 @@ document.getElementById('clear-filters').addEventListener('click', async () => {
         'entry-type': params.get('entry_type') || '',
         'amount-min': params.get('amount_min') || '',
         'amount-max': params.get('amount_max') || '',
-        'days': params.get('days') || '30',
+        'days': params.get('days') || '90',
         'date-from': params.get('date_from') || '',
         'date-to': params.get('date_to') || ''
     };
