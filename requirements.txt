@@ -11,7 +11,6 @@ certifi==2026.7.22
 cfgv==3.5.0
 charset-normalizer==3.5.1
 click==8.4.2
--e git+https://github.com/atunison3/accounting.git@cafa8f61ade32c6dc476251b262e6c9d21968bcd#egg=college_accounting
 detect-installer==0.1.0
 digital-toolbox @ git+https://github.com/atunison3/digital_toolbox@0e65a4dbaa70c5f4af9deb4a308488554f824216
 distlib==0.4.3
