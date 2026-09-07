@@ -238,12 +238,12 @@ class TestDatabaseAccountOperation(unittest.TestCase):
         cls.conn.commit()
 
     def test_account_creation(self) -> None:
-        account = (1, 110, "Cash", "Asset", "Cash", 1)
+        account = (1, 110, "Cash", "Asset", "Cash", 1, 1)
         sql = """
             INSERT INTO accounts
-                (business_id, account_number, account_name, account_type, description, created_by)
+                (business_id, account_number, account_name, account_type, description, is_debit, created_by)
             VALUES
-                (?, ?, ?, ?, ?, ?)"""
+                (?, ?, ?, ?, ?, ?, ?)"""
         self.conn.execute(sql, account)
 
         sql = "SELECT * FROM accounts"
@@ -437,15 +437,15 @@ class TestDatabaseTransactionLine(unittest.TestCase):
         cls.conn.execute(sql, business)
 
         accounts = [
-            (1, 110, "Cash", "Asset", "Cash", 1),
-            (1, 310, "Owner Capital", "Equity", "Owner contributions", 1),
+            (1, 110, "Cash", "Asset", "Cash", 1, 1),
+            (1, 310, "Owner Capital", "Equity", "Owner contributions", 0, 1),
         ]
 
         sql = """
             INSERT INTO accounts
-                (business_id, account_number, account_name, account_type, description, created_by)
+                (business_id, account_number, account_name, account_type, description, is_debit, created_by)
             VALUES
-                (?, ?, ?, ?, ?, ?)
+                (?, ?, ?, ?, ?, ?, ?)
         """
         cls.conn.executemany(sql, accounts)
 
@@ -727,15 +727,15 @@ class TestDatabaseAccountsHistory(unittest.TestCase):
         cls.conn.execute(sql, business)
 
         accounts = [
-            (1, 110, "Cash", "Asset", "Cash", 1),
-            (1, 310, "Owner Capital", "Equity", "Owner contributions", 1),
+            (1, 110, "Cash", "Asset", "Cash", 1, 1),
+            (1, 310, "Owner Capital", "Equity", "Owner contributions", 0, 1),
         ]
 
         sql = """
             INSERT INTO accounts
-                (business_id, account_number, account_name, account_type, description, created_by)
+                (business_id, account_number, account_name, account_type, description, is_debit, created_by)
             VALUES
-                (?, ?, ?, ?, ?, ?)
+                (?, ?, ?, ?, ?, ?, ?)
         """
         cls.conn.executemany(sql, accounts)
 

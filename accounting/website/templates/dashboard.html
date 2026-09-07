@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-heading">
+    <p class="eyebrow">WORKSPACE</p>
+    <h1>Accounting workspace</h1>
+    <p class="lead">Enter the records that make up your books. Post transactions, add accounts, and log mileage here.</p>
+</section>
+{% if message %}<div class="notice success" role="status">{{ message }}</div>{% endif %}
+{% if error %}<div class="notice error" role="alert">{{ error }}</div>{% endif %}
+<p><a class="button secondary" href="{{ url_for('chart_of_accounts') }}">View chart of accounts</a></p>
+<section class="form-grid">
+    <article class="form-card">
+        <h2>Add a business</h2>
+        <p class="muted">Create the reporting context for your accounts.</p>
+        <form method="post" action="{{ url_for('create_business_form') }}">
+            <label for="business-title">Business name</label>
+            <input id="business-title" name="title" required>
+            <label for="business-tax-id">Tax ID <span>(optional)</span></label>
+            <input id="business-tax-id" name="tax_id" placeholder="12-3456789">
+            <label for="business-user">Created by user ID</label>
+            <input id="business-user" name="created_by" type="number" min="1" required>
+            <button class="button primary" type="submit">Add business</button>
+        </form>
+    </article>
+    <article class="form-card">
+        <h2>Add an account</h2>
+        <p class="muted">Add an account to a business chart of accounts.</p>
+        <form method="post" action="{{ url_for('create_account_form') }}">
+            <label for="account-business">Business ID</label>
+            <input id="account-business" name="business_id" type="number" min="1" required>
+            <label for="account-number">Account number</label>
+            <input id="account-number" name="account_number" type="number" min="1" required>
+            <label for="account-name">Account name</label>
+            <input id="account-name" name="account_name" required>
+            <label for="account-type">Account type</label>
+            <select id="account-type" name="account_type">
+                <option>Asset</option><option>Contra-asset</option><option>Liability</option>
+                <option>Equity</option><option>Revenue</option><option>Expense</option>
+            </select>
+            <label for="account-user">Created by user ID</label>
+            <input id="account-user" name="created_by" type="number" min="1" required>
+            <label class="checkbox"><input name="is_debit" type="checkbox"> Normal balance is debit</label>
+            <button class="button primary" type="submit">Add account</button>
+        </form>
+    </article>
+    <article class="form-card">
+        <h2>Log mileage</h2>
+        <p class="muted">Record business mileage in miles, up to one decimal place.</p>
+        <form method="post" action="{{ url_for('create_mileage_form') }}">
+            <label for="mileage-business">Business ID</label><input id="mileage-business" name="business_id" type="number" min="1" required>
+            <label for="mileage-date">Date</label><input id="mileage-date" name="mileage_date" type="date" required>
+            <label for="miles">Miles driven</label><input id="miles" name="miles" type="number" min="0" step="0.1" required>
+            <label for="start-miles">Starting odometer <span>(optional)</span></label><input id="start-miles" name="start_miles" type="number" min="0" step="0.1">
+            <label for="end-miles">Ending odometer <span>(optional)</span></label><input id="end-miles" name="end_miles" type="number" min="0" step="0.1">
+            <label for="mileage-vehicle">Vehicle <span>(optional)</span></label><input id="mileage-vehicle" name="vehicle">
+            <label for="mileage-explanation">Explanation</label><input id="mileage-explanation" name="explanation" required>
+            <label for="mileage-user">Created by user ID</label><input id="mileage-user" name="created_by" type="number" min="1" required>
+            <button class="button primary" type="submit">Log mileage</button>
+        </form>
+    </article>
+    <article class="form-card wide">
+        <h2>Post a transaction</h2>
+        <p class="muted">A simple two-line journal entry. Enter dollar amounts; debits and credits must match.</p>
+        <form method="post" action="{{ url_for('create_transaction_form') }}" class="transaction-form" enctype="multipart/form-data">
+            <div><label for="transaction-business">Business ID</label><input id="transaction-business" name="business_id" type="number" min="1" required></div>
+            <div><label for="transaction-date">Date</label><input id="transaction-date" name="transaction_date" type="date" required></div>
+            <div><label for="transaction-currency">Currency</label><select id="transaction-currency" name="currency_code"><option value="USD" selected>USD — US Dollar</option><option value="CAD">CAD — Canadian Dollar</option><option value="EUR">EUR — Euro</option><option value="GBP">GBP — Pound Sterling</option><option value="AUD">AUD — Australian Dollar</option><option value="JPY">JPY — Japanese Yen</option><option value="THB">THB — Thai Baht</option></select></div>
+            <div><label for="transaction-user">User ID</label><input id="transaction-user" name="user_id" type="number" min="1" required></div>
+            <div class="full"><label for="transaction-description">Description</label><input id="transaction-description" name="description" required></div>
+            <div class="full"><label>Transaction lines <span>Amounts (<span id="transaction-currency-symbol">$</span>)</span></label><div id="transaction-lines">
+                <div class="line-row"><input name="account_numbers" type="number" min="1" placeholder="Account number" onchange="lookupAccount(this)" required><input name="account_ids" type="hidden"><input name="amounts" type="number" min="0" step="0.01" placeholder="Amount ($)" required><select name="line_types"><option value="debit">Debit</option><option value="credit">Credit</option></select><span class="account-result"></span></div>
+                <div class="line-row"><input name="account_numbers" type="number" min="1" placeholder="Account number" onchange="lookupAccount(this)" required><input name="account_ids" type="hidden"><input name="amounts" type="number" min="0" step="0.01" placeholder="Amount ($)" required><select name="line_types"><option value="debit">Debit</option><option value="credit" selected>Credit</option></select><span class="account-result"></span></div>
+            </div><button class="button secondary add-line" type="button" onclick="addTransactionLine()">+ Add another line</button></div>
+            <div><label for="posting-reference">Posting reference <span>(optional)</span></label><input id="posting-reference" name="posting_reference"></div>
+            <div><label for="transaction-document">Supporting document <span>(optional)</span></label><input id="transaction-document" name="document_file" type="file"></div>
+            <div><label for="document-type">Document type <span>(optional)</span></label><input id="document-type" name="document_type" value="Receipt"></div>
+            <div><label for="document-date">Document date <span>(optional)</span></label><input id="document-date" name="document_date" type="date"></div>
+            <div class="full"><button class="button primary" type="submit">Post transaction</button></div>
+        </form>
+        <script>
+        function addTransactionLine() {
+            const row = document.createElement('div');
+            row.className = 'line-row';
+            row.innerHTML = '<input name="account_numbers" type="number" min="1" placeholder="Account number" onchange="lookupAccount(this)" required>' +
+                '<input name="account_ids" type="hidden">' +
+                '<input name="amounts" type="number" min="0" step="0.01" placeholder="Amount ($)" required>' +
+                '<select name="line_types"><option value="debit">Debit</option><option value="credit">Credit</option></select>' +
+                '<span class="account-result"></span>';
+            document.getElementById('transaction-lines').appendChild(row);
+            updateCurrencySymbol();
+        }
+        const currencySymbols = {USD: '$', CAD: '$', EUR: '€', GBP: '£', AUD: '$', JPY: '¥', THB: '฿'};
+        const currencySelect = document.getElementById('transaction-currency');
+        const currencySymbol = document.getElementById('transaction-currency-symbol');
+        function updateCurrencySymbol() {
+            const symbol = currencySymbols[currencySelect.value] || currencySelect.value;
+            currencySymbol.textContent = symbol;
+            document.querySelectorAll('input[name="amounts"]').forEach(input => { input.placeholder = `Amount (${symbol})`; });
+        }
+        currencySelect.addEventListener('change', updateCurrencySymbol);
+        updateCurrencySymbol();
+        document.querySelector('.transaction-form').addEventListener('wheel', event => {
+            if (event.target.matches('input[type="number"]')) event.preventDefault();
+        }, {passive: false});
+
+        async function lookupAccount(input) {
+            const businessId = document.getElementById('transaction-business').value;
+            const row = input.closest('.line-row');
+            const result = row.querySelector('.account-result');
+            const hiddenId = row.querySelector('input[name="account_ids"]');
+            if (!businessId || !input.value) return;
+            result.textContent = 'Looking up…';
+            try {
+                const response = await fetch(`/accounts/lookup?business_id=${businessId}&account_number=${input.value}`);
+                if (!response.ok) throw new Error('Account not found');
+                const account = await response.json();
+                hiddenId.value = account.id;
+                result.textContent = `${account.name} (ID ${account.id})`;
+                result.className = 'account-result found';
+            } catch (error) {
+                hiddenId.value = '';
+                result.textContent = 'Account not found';
+                result.className = 'account-result missing';
+            }
+        }
+        </script>
+    </article>
+</section>
+{% endblock %}

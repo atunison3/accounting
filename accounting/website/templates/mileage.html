@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-heading"><p class="eyebrow">REIMBURSEMENT</p><h1>Mileage dashboard</h1><p class="lead">Review business mileage, supporting documents, and annual driving totals.</p></section>
+<section class="selector-card"><div class="filters">
+    <div><label for="mileage-business">Business</label><select id="mileage-business"><option value="">Select a business</option>{% for business in businesses %}<option value="{{ business.id }}"{% if business.id == selected_business_id %} selected{% endif %}>{{ business.title }}</option>{% endfor %}</select></div>
+    <div><label for="mileage-year">Year</label><input id="mileage-year" type="number" min="2000" max="2100" value="{{ year }}"></div>
+    <div><label for="mileage-from">From date</label><input id="mileage-from" type="date"></div>
+    <div><label for="mileage-to">To date</label><input id="mileage-to" type="date"></div>
+    <div><label for="mileage-vehicle">Vehicle</label><select id="mileage-vehicle"><option value="">All vehicles</option>{% for vehicle in vehicles %}<option>{{ vehicle }}</option>{% endfor %}</select></div>
+    <div class="filter-actions"><button class="button primary" id="mileage-apply" type="button">Apply filters</button><button class="button secondary" id="mileage-clear" type="button">Clear</button></div>
+</div><p class="filter-status" id="mileage-status">Select a business to load mileage.</p></section>
+<section class="mileage-metrics"><article class="table-card metric-card"><h2>Total miles in year</h2><strong id="total-miles">—</strong><p id="miles-year">Year total</p></article><article class="table-card metric-card"><h2>Miles without document</h2><strong id="without-document">—</strong><p>Percentage of mileage logs without a linked document</p></article></section>
+<section class="table-card"><div id="mileage-table"></div></section>
+<link href="https://unpkg.com/tabulator-tables@6.3.1/dist/css/tabulator.min.css" rel="stylesheet"><script src="https://unpkg.com/tabulator-tables@6.3.1/dist/js/tabulator.min.js"></script>
+<script>
+const business = document.getElementById('mileage-business');
+const table = new Tabulator('#mileage-table', {layout: 'fitColumns', placeholder: 'Select a business to see mileage.', columns: [
+    {title: 'Date', field: 'date', sorter: 'date'}, {title: 'Miles', field: 'miles', hozAlign: 'right', formatter: cell => Number(cell.getValue()).toFixed(1)},
+    {title: 'Vehicle', field: 'vehicle'}, {title: 'Explanation', field: 'explanation'}, {title: 'Document', field: 'has_document', formatter: cell => cell.getValue() ? 'Attached' : 'Missing'}
+]});
+async function loadMileage() {
+    if (!business.value) { table.clearData(); document.getElementById('mileage-status').textContent = 'Select a business to load mileage.'; return; }
+    const params = new URLSearchParams({business_id: business.value});
+    const fields = {date_from: document.getElementById('mileage-from').value, date_to: document.getElementById('mileage-to').value, vehicle: document.getElementById('mileage-vehicle').value};
+    Object.entries(fields).forEach(([key, value]) => { if (value) params.set(key, value); });
+    const year = document.getElementById('mileage-year').value || new Date().getFullYear();
+    const [rowsResponse, summaryResponse] = await Promise.all([fetch(`/api/mileage?${params}`), fetch(`/api/mileage/summary?business_id=${business.value}&year=${year}`)]);
+    if (!rowsResponse.ok || !summaryResponse.ok) { document.getElementById('mileage-status').textContent = 'Unable to load mileage.'; return; }
+    const rows = await rowsResponse.json(), summary = await summaryResponse.json();
+    await table.replaceData(rows); document.getElementById('total-miles').textContent = `${summary.total_miles.toFixed(1)} mi`; document.getElementById('without-document').textContent = `${summary.without_document_percentage.toFixed(2)}%`; document.getElementById('miles-year').textContent = `Total for ${summary.year}`;
+    document.getElementById('mileage-status').textContent = `${rows.length} mileage log${rows.length === 1 ? '' : 's'} found.`;
+    window.history.replaceState({}, '', `/mileage?business_id=${business.value}&year=${year}`);
+}
+business.addEventListener('change', loadMileage); document.getElementById('mileage-apply').addEventListener('click', loadMileage);
+document.getElementById('mileage-clear').addEventListener('click', () => { document.getElementById('mileage-from').value = ''; document.getElementById('mileage-to').value = ''; document.getElementById('mileage-vehicle').value = ''; loadMileage(); });
+if (business.value) loadMileage();
+</script>
+{% endblock %}

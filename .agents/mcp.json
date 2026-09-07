@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "accounting": {
+      "command": "/Users/andrewtunison/11./accounting/.venv/bin/python",
+      "args": ["-m", "accounting_server.server"],
+      "cwd": "/Users/andrewtunison/11./accounting"
+    }
+  }
+}

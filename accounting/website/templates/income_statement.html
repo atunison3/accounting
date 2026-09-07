@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-heading"><p class="eyebrow">FINANCIAL STATEMENT</p><h1>Income Statement</h1></section>
+<section class="selector-card">
+<form class="business-selector" method="get">
+<label>Business<select name="business_id" required><option value="">Select a business</option>{% for item in businesses %}<option value="{{ item.id }}" {% if business and business.id == item.id %}selected{% endif %}>{{ item.title }}</option>{% endfor %}</select></label>
+<label>Reporting period<select name="period" id="income-period">
+<option value="last-quarter" {% if period == 'last-quarter' %}selected{% endif %}>Last completed quarter</option>
+<option value="custom" {% if period == 'custom' %}selected{% endif %}>Custom date range</option>
+{% for quarter in range(1, 5) %}<option value="q{{ quarter }}" {% if period == 'q' ~ quarter %}selected{% endif %}>Quarter {{ quarter }}</option>{% endfor %}
+{% for number, name in months %}<option value="m{{ number }}" {% if period == 'm' ~ number %}selected{% endif %}>{{ name }}</option>{% endfor %}
+</select></label>
+<label>Year (month/quarter presets)<input name="year" type="number" min="1" max="9999" value="{{ year }}"></label>
+<label>From<input name="start_date" id="income-start" type="date" value="{{ start_date }}" required></label>
+<label>Through<input name="end_date" id="income-end" type="date" value="{{ end_date }}" required></label>
+<button class="button primary" type="submit">Prepare statement</button>
+</form>
+<p class="muted">Calendar quarters end March 31, June 30, September 30, and December 31. Dates are inclusive. Editing dates selects a custom range.</p>
+</section>
+{% if error %}<div class="notice error" role="alert">{{ error }}</div>{% endif %}
+{% if statement is not none %}
+<section class="table-card">
+<div class="statement-heading"><h2>{{ business.title }}</h2><h3>Income Statement</h3><p>{{ start_date.strftime('%B %d, %Y') }} through {{ end_date.strftime('%B %d, %Y') }}</p><p>Amounts in USD</p></div>
+<p class="chart-actions"><a class="button secondary" href="{{ url_for('income_statement_pdf').include_query_params(business_id=business.id, start_date=start_date, end_date=end_date) }}">Print / download PDF</a></p>
+<table class="statement-table"><thead><tr><th>Account</th><th class="amount">Amount (USD)</th></tr></thead><tbody>
+{% for key, title in [('revenue', 'Revenue'), ('expenses', 'Expenses')] %}
+<tr class="category-row"><th colspan="2">{{ title }}</th></tr>
+{% for row in statement[key] %}<tr><td>{{ row.number }} · {{ row.name }}</td><td class="amount">{{ row.cents|accounting_money }}</td></tr>{% else %}<tr><td colspan="2">No {{ title|lower }} accounts.</td></tr>{% endfor %}
+<tr><th>Total {{ title|lower }}</th><td class="amount"><strong>{{ statement[key ~ '_total']|accounting_money }}</strong></td></tr>
+{% endfor %}
+</tbody><tfoot><tr><th>Net Income (Loss)</th><th class="amount">{{ statement.net_income|accounting_money }}</th></tr></tfoot></table>
+</section>
+{% endif %}
+<script>
+for (const id of ['income-start', 'income-end']) {
+    document.getElementById(id).addEventListener('change', () => { document.getElementById('income-period').value = 'custom'; });
+}
+</script>
+{% endblock %}

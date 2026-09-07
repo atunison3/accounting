@@ -1,20 +1,26 @@
 # accounting/infrastructure/sqlite/repositories.py
 from __future__ import annotations
 
+import logging
 import sqlite3
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from accounting.domain.models import (
     Account,
     AccountType,
     AccountingTransaction,
+    AccountingTransactionDocument,
     Business,
+    Document,
+    Mileage,
     TransactionLine,
+    TransactionEntry,
     User,
 )
 from accounting.application.repositories import (
     AccountRepository,
     BusinessRepository,
+    MileageRepository,
     TransactionRepository,
     UserRepository,
 )
@@ -32,6 +38,18 @@ def _int_to_bool(value: int | None) -> bool:
     return bool(value)
 
 
+LOGGER = logging.getLogger("accounting.api.sqlite")
+
+
+def _execute(cursor: sqlite3.Cursor, sql: str, parameters: tuple = ()) -> sqlite3.Cursor:
+    """Execute SQL and log the statement and parameters when it fails."""
+    try:
+        return cursor.execute(sql, parameters)
+    except Exception:
+        LOGGER.exception("SQLite execute failed sql=%s parameters=%r", sql.strip(), parameters)
+        raise
+
+
 # ---------------------------------------------------------------------------
 # Row → Model helpers
 # ---------------------------------------------------------------------------
@@ -46,11 +64,11 @@ def _row_to_user(row: sqlite3.Row) -> User:
         email=row["email"],
         is_active=_int_to_bool(row["is_active"]),
         created_at=row["created_at"],
-        created_by=row["created_by"],
+        created_by=None,
         updated_at=row["updated_at"],
-        updated_by=row["updated_by"],
+        updated_by=None,
         deleted_at=row["deleted_at"],
-        deleted_by=row["deleted_by"],
+        deleted_by=None,
     )
 
 
@@ -61,6 +79,47 @@ def _row_to_business(row: sqlite3.Row) -> Business:
         tax_id=row["tax_id"],
         is_business_active=_int_to_bool(row["is_business_active"]),
         established=row["established"],
+        tax_year_end_month=row["tax_year_end_month"],
+        created_at=row["created_at"],
+        created_by=row["created_by"],
+        updated_at=row["updated_at"],
+        updated_by=row["updated_by"],
+        deleted_at=row["deleted_at"],
+        deleted_by=row["deleted_by"],
+    )
+
+
+def _row_to_document(row: sqlite3.Row) -> Document:
+    return Document(
+        id=row["id"],
+        document_type=row["document_type"],
+        document_date=row["document_date"],
+        title=row["title"],
+        description=row["description"],
+        filename=row["filename"],
+        file_path=row["file_path"],
+        mime_type=row["mime_type"],
+        file_size_bytes=row["file_size_bytes"],
+        sha256_hash=row["sha256_hash"],
+        created_at=row["created_at"],
+        created_by=row["created_by"],
+        updated_at=row["updated_at"],
+        updated_by=row["updated_by"],
+        deleted_at=row["deleted_at"],
+        deleted_by=row["deleted_by"],
+    )
+
+
+def _row_to_mileage(row: sqlite3.Row) -> Mileage:
+    return Mileage(
+        id=row["id"],
+        business_id=row["business_id"],
+        mileage_date=row["miles_date"],
+        tenth_miles=row["tenth_miles"],
+        start_tenth_miles=row["tenth_miles_begin"],
+        end_tenth_miles=row["tenth_miles_end"],
+        explanation=row["explanation"],
+        vehicle=row["vehicle"],
         created_at=row["created_at"],
         created_by=row["created_by"],
         updated_at=row["updated_at"],
@@ -79,6 +138,7 @@ def _row_to_account(row: sqlite3.Row) -> Account:
         account_type=AccountType(row["account_type"]),
         description=row["description"],
         is_account_active=_int_to_bool(row["is_account_active"]),
+        is_debit=_int_to_bool(row["is_debit"]),
         created_at=row["created_at"],
         created_by=row["created_by"],
         updated_at=row["updated_at"],
@@ -91,8 +151,10 @@ def _row_to_account(row: sqlite3.Row) -> Account:
 def _row_to_transaction(row: sqlite3.Row) -> AccountingTransaction:
     return AccountingTransaction(
         id=row["id"],
+        business_id=row["business_id"],
         transaction_date=row["transaction_date"],
         description=row["description"],
+        currency_code=row["currency_code"],
         posting_reference=row["posting_reference"],
         created_at=row["created_at"],
         created_by=row["created_by"],
@@ -131,12 +193,13 @@ class SqliteUserRepository(UserRepository):
     def add(self, user: User) -> int:
         now = _utcnow()
         cur = self._conn.cursor()
-        cur.execute(
+        _execute(
+            cur,
             """
             INSERT INTO users (
                 username, first_name, last_name, email, is_active,
-                created_at, created_by, updated_at, updated_by
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 user.username,
@@ -145,9 +208,7 @@ class SqliteUserRepository(UserRepository):
                 user.email,
                 _bool_to_int(user.is_active),
                 now,
-                user.created_by,
                 now,
-                user.updated_by or user.created_by,
             ),
         )
         last_row_id = cur.lastrowid
@@ -157,7 +218,8 @@ class SqliteUserRepository(UserRepository):
 
     def get_by_id(self, user_id: int) -> User | None:
         cur = self._conn.cursor()
-        cur.execute(
+        _execute(
+            cur,
             "SELECT * FROM users WHERE id = ? AND deleted_at IS NULL",
             (user_id,),
         )
@@ -166,7 +228,8 @@ class SqliteUserRepository(UserRepository):
 
     def get_by_username(self, username: str) -> User | None:
         cur = self._conn.cursor()
-        cur.execute(
+        _execute(
+            cur,
             "SELECT * FROM users WHERE username = ? AND deleted_at IS NULL",
             (username,),
         )
@@ -179,24 +242,20 @@ class SqliteBusinessRepository(BusinessRepository):
         self._conn = conn
 
     def add(self, business: Business) -> int:
-        now = _utcnow()
         cur = self._conn.cursor()
-        cur.execute(
+        _execute(
+            cur,
             """
             INSERT INTO businesses (
-                title, tax_id, is_business_active, established,
-                created_at, created_by, updated_at, updated_by
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                title, tax_id, is_business_active, established, created_by
+            ) VALUES (?, ?, ?, ?, ?)
             """,
             (
                 business.title,
                 business.tax_id,
                 _bool_to_int(business.is_business_active),
                 business.established,
-                now,
                 business.created_by,
-                now,
-                business.updated_by or business.created_by,
             ),
         )
         last_row_id = cur.lastrowid
@@ -206,7 +265,8 @@ class SqliteBusinessRepository(BusinessRepository):
 
     def get_by_id(self, business_id: int) -> Business | None:
         cur = self._conn.cursor()
-        cur.execute(
+        _execute(
+            cur,
             "SELECT * FROM businesses WHERE id = ? AND deleted_at IS NULL",
             (business_id,),
         )
@@ -215,8 +275,173 @@ class SqliteBusinessRepository(BusinessRepository):
 
     def get_all(self) -> list[Business]:
         cur = self._conn.cursor()
-        cur.execute("SELECT * FROM businesses WHERE deleted_at IS NULL ORDER BY title")
+        _execute(cur, "SELECT * FROM businesses WHERE deleted_at IS NULL ORDER BY title")
         return [_row_to_business(row) for row in cur.fetchall()]
+
+
+class SqliteDocumentRepository:
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._conn = conn
+
+    def add(self, document: Document) -> int:
+        now = _utcnow()
+        cur = self._conn.cursor()
+        _execute(
+            cur,
+            """
+            INSERT INTO documents (
+                document_type, document_date, title, description, filename, file_path,
+                mime_type, file_size_bytes, sha256_hash, created_at, created_by,
+                updated_at, updated_by
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                document.document_type,
+                document.document_date.isoformat(),
+                document.title,
+                document.description,
+                document.filename,
+                document.file_path,
+                document.mime_type,
+                document.file_size_bytes,
+                document.sha256_hash,
+                now,
+                document.created_by,
+                now,
+                document.updated_by or document.created_by,
+            ),
+        )
+        if not isinstance(cur.lastrowid, int):
+            raise RuntimeError("Failed to insert document")
+        return cur.lastrowid
+
+    def get_by_id(self, document_id: int) -> Document | None:
+        cur = self._conn.cursor()
+        _execute(cur, "SELECT * FROM documents WHERE id = ? AND deleted_at IS NULL", (document_id,))
+        row = cur.fetchone()
+        return _row_to_document(row) if row else None
+
+
+class SqliteTransactionDocumentRepository:
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._conn = conn
+
+    def get_for_transaction(self, transaction_id: int) -> list[Document]:
+        cur = self._conn.cursor()
+        _execute(
+            cur,
+            """
+            SELECT d.* FROM documents AS d
+            JOIN accounting_transaction_documents AS atd ON atd.document_id = d.id
+            WHERE atd.transction_id = ? AND atd.deleted_at IS NULL AND d.deleted_at IS NULL
+            ORDER BY d.id
+            """,
+            (transaction_id,),
+        )
+        return [_row_to_document(row) for row in cur.fetchall()]
+
+    def add(self, link: AccountingTransactionDocument) -> int:
+        now = _utcnow()
+        cur = self._conn.cursor()
+        _execute(
+            cur,
+            """
+            INSERT INTO accounting_transaction_documents
+                (transction_id, document_id, created_at, created_by, updated_at, updated_by)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (link.transaction_id, link.document_id, now, link.created_by, now, link.updated_by or link.created_by),
+        )
+        if not isinstance(cur.lastrowid, int):
+            raise RuntimeError("Failed to link document")
+        return cur.lastrowid
+
+
+class SqliteMileageRepository(MileageRepository):
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._conn = conn
+
+    def add(self, mileage: Mileage) -> int:
+        now = _utcnow()
+        cur = self._conn.cursor()
+        _execute(
+            cur,
+            """
+            INSERT INTO miles (
+                business_id, miles_date, tenth_miles, tenth_miles_begin,
+                tenth_miles_end, explanation, vehicle, created_at, created_by,
+                updated_at, updated_by
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                mileage.business_id,
+                mileage.mileage_date.isoformat(),
+                mileage.tenth_miles,
+                mileage.start_tenth_miles,
+                mileage.end_tenth_miles,
+                mileage.explanation,
+                mileage.vehicle,
+                now,
+                mileage.created_by,
+                now,
+                mileage.updated_by or mileage.created_by,
+            ),
+        )
+        if not isinstance(cur.lastrowid, int):
+            raise RuntimeError("Failed to insert mileage")
+        return cur.lastrowid
+
+    def get_by_id(self, mileage_id: int) -> Mileage | None:
+        cur = self._conn.cursor()
+        _execute(cur, "SELECT * FROM miles WHERE id = ? AND deleted_at IS NULL", (mileage_id,))
+        row = cur.fetchone()
+        return _row_to_mileage(row) if row else None
+
+    def search(
+        self,
+        business_id: int,
+        date_from: date | None = None,
+        date_to: date | None = None,
+        vehicle: str | None = None,
+    ) -> list[dict[str, object]]:
+        cur = self._conn.cursor()
+        _execute(
+            cur,
+            """
+            SELECT m.id, m.miles_date, m.tenth_miles, m.explanation, m.vehicle,
+                   CASE WHEN EXISTS (
+                       SELECT 1 FROM mileage_documents AS md
+                       WHERE md.mileage_id = m.id AND md.deleted_at IS NULL
+                   ) THEN 1 ELSE 0 END AS has_document
+            FROM miles AS m
+            WHERE m.business_id = ? AND m.deleted_at IS NULL
+              AND (? IS NULL OR m.miles_date >= ?)
+              AND (? IS NULL OR m.miles_date <= ?)
+              AND (? IS NULL OR m.vehicle = ?)
+            ORDER BY m.miles_date DESC, m.id DESC
+            """,
+            (business_id, date_from, date_from, date_to, date_to, vehicle, vehicle),
+        )
+        return [dict(row) for row in cur.fetchall()]
+
+    def summary(self, business_id: int, year: int) -> tuple[int, int, int]:
+        cur = self._conn.cursor()
+        _execute(
+            cur,
+            """
+            SELECT COUNT(*) AS total, COALESCE(SUM(m.tenth_miles), 0) AS tenths,
+                   COALESCE(SUM(CASE WHEN NOT EXISTS (
+                       SELECT 1 FROM mileage_documents AS md
+                       WHERE md.mileage_id = m.id AND md.deleted_at IS NULL
+                   ) THEN 1 ELSE 0 END), 0) AS without_documents
+            FROM miles AS m
+            WHERE m.business_id = ? AND m.deleted_at IS NULL
+              AND m.miles_date >= ? AND m.miles_date <= ?
+            """,
+            (business_id, f"{year:04d}-01-01", f"{year:04d}-12-31"),
+        )
+        row = cur.fetchone()
+        return int(row["tenths"]), int(row["total"]), int(row["without_documents"])
 
 
 class SqliteAccountRepository(AccountRepository):
@@ -226,13 +451,14 @@ class SqliteAccountRepository(AccountRepository):
     def add(self, account: Account) -> int:
         now = _utcnow()
         cur = self._conn.cursor()
-        cur.execute(
+        _execute(
+            cur,
             """
             INSERT INTO accounts (
                 business_id, account_number, account_name, account_type,
-                description, is_account_active,
+                description, is_account_active, is_debit,
                 created_at, created_by, updated_at, updated_by
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 account.business_id,
@@ -241,6 +467,7 @@ class SqliteAccountRepository(AccountRepository):
                 account.account_type.value,
                 account.description,
                 _bool_to_int(account.is_account_active),
+                _bool_to_int(account.is_debit),
                 now,
                 account.created_by,
                 now,
@@ -254,7 +481,8 @@ class SqliteAccountRepository(AccountRepository):
 
     def get_by_id(self, account_id: int) -> Account | None:
         cur = self._conn.cursor()
-        cur.execute(
+        _execute(
+            cur,
             "SELECT * FROM accounts WHERE id = ? AND deleted_at IS NULL",
             (account_id,),
         )
@@ -263,7 +491,8 @@ class SqliteAccountRepository(AccountRepository):
 
     def get_by_number(self, business_id: int, account_number: int) -> Account | None:
         cur = self._conn.cursor()
-        cur.execute(
+        _execute(
+            cur,
             """
             SELECT * FROM accounts
             WHERE business_id = ? AND account_number = ? AND deleted_at IS NULL
@@ -275,7 +504,8 @@ class SqliteAccountRepository(AccountRepository):
 
     def get_for_business(self, business_id: int) -> list[Account]:
         cur = self._conn.cursor()
-        cur.execute(
+        _execute(
+            cur,
             """
             SELECT * FROM accounts
             WHERE business_id = ? AND deleted_at IS NULL
@@ -284,6 +514,31 @@ class SqliteAccountRepository(AccountRepository):
             (business_id,),
         )
         return [_row_to_account(row) for row in cur.fetchall()]
+
+    def update(self, account_id: int, account: Account, user_id: int) -> None:
+        now = _utcnow()
+        cur = self._conn.cursor()
+        _execute(
+            cur,
+            """
+            UPDATE accounts
+            SET account_number = ?, account_name = ?, account_type = ?,
+                description = ?, is_account_active = ?, is_debit = ?,
+                updated_at = ?, updated_by = ?
+            WHERE id = ? AND deleted_at IS NULL
+            """,
+            (
+                account.account_number,
+                account.account_name,
+                account.account_type.value,
+                account.description,
+                _bool_to_int(account.is_account_active),
+                _bool_to_int(account.is_debit),
+                now,
+                user_id,
+                account_id,
+            ),
+        )
 
 
 class SqliteTransactionRepository(TransactionRepository):
@@ -296,24 +551,23 @@ class SqliteTransactionRepository(TransactionRepository):
         lines: list[TransactionLine],
         user_id: int,
     ) -> int:
-        now = _utcnow()
         cur = self._conn.cursor()
 
         # Insert header
-        cur.execute(
+        _execute(
+            cur,
             """
             INSERT INTO accounting_transactions (
-                transaction_date, description, posting_reference,
-                created_at, created_by, updated_at, updated_by
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                business_id, transaction_date, description, currency_code,
+                posting_reference, created_by
+            ) VALUES (?, ?, ?, ?, ?, ?)
             """,
             (
+                transaction.business_id,
                 transaction.transaction_date.isoformat(),
                 transaction.description,
+                transaction.currency_code,
                 transaction.posting_reference,
-                now,
-                user_id,
-                now,
                 user_id,
             ),
         )
@@ -323,42 +577,90 @@ class SqliteTransactionRepository(TransactionRepository):
 
         # Insert lines
         for line in lines:
-            cur.execute(
+            _execute(
+                cur,
                 """
                 INSERT INTO transaction_lines (
                     transaction_id, account_id, amount_cents, is_debit,
-                    created_at, created_by, updated_at, updated_by
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    created_by
+                ) VALUES (?, ?, ?, ?, ?)
                 """,
                 (
                     transaction_id,
                     line.account_id,
                     line.amount_cents,
                     _bool_to_int(line.is_debit),
-                    now,
-                    user_id,
-                    now,
                     user_id,
                 ),
             )
 
-        last_row_id = cur.lastrowid
-        if not isinstance(last_row_id, int):
-            raise RuntimeError
-        return last_row_id
+        if not isinstance(transaction_id, int):
+            raise RuntimeError("Failed to insert transaction: no lastrowid returned")
+        return transaction_id
 
     def get_by_id(self, transaction_id: int) -> AccountingTransaction | None:
         cur = self._conn.cursor()
-        cur.execute(
+        _execute(
+            cur,
             "SELECT * FROM accounting_transactions WHERE id = ? AND deleted_at IS NULL",
             (transaction_id,),
         )
         row = cur.fetchone()
         return _row_to_transaction(row) if row else None
 
+    def update(
+        self,
+        transaction_id: int,
+        transaction: AccountingTransaction,
+        lines: list[TransactionLine],
+        user_id: int,
+    ) -> None:
+        now = _utcnow()
+        cur = self._conn.cursor()
+        _execute(
+            cur,
+            """
+            UPDATE accounting_transactions
+            SET business_id = ?, transaction_date = ?, description = ?,
+                currency_code = ?, posting_reference = ?, updated_at = ?, updated_by = ?
+            WHERE id = ? AND deleted_at IS NULL
+            """,
+            (
+                transaction.business_id,
+                transaction.transaction_date.isoformat(),
+                transaction.description,
+                transaction.currency_code,
+                transaction.posting_reference,
+                now,
+                user_id,
+                transaction_id,
+            ),
+        )
+        _execute(
+            cur,
+            """
+            UPDATE transaction_lines
+            SET deleted_at = ?, deleted_by = ?, updated_at = ?, updated_by = ?
+            WHERE transaction_id = ? AND deleted_at IS NULL
+            """,
+            (now, user_id, now, user_id, transaction_id),
+        )
+        for line in lines:
+            _execute(
+                cur,
+                """
+                INSERT INTO transaction_lines (
+                    transaction_id, account_id, amount_cents, is_debit,
+                    created_by
+                ) VALUES (?, ?, ?, ?, ?)
+                """,
+                (transaction_id, line.account_id, line.amount_cents, _bool_to_int(line.is_debit), user_id),
+            )
+
     def get_lines(self, transaction_id: int) -> list[TransactionLine]:
         cur = self._conn.cursor()
-        cur.execute(
+        _execute(
+            cur,
             """
             SELECT * FROM transaction_lines
             WHERE transaction_id = ? AND deleted_at IS NULL
@@ -368,12 +670,114 @@ class SqliteTransactionRepository(TransactionRepository):
         )
         return [_row_to_line(row) for row in cur.fetchall()]
 
+    def search(  # noqa: PLR0913, PLR0917
+        self,
+        business_id: int,
+        account_number: int | None = None,
+        is_debit: bool | None = None,
+        min_amount_cents: int | None = None,
+        max_amount_cents: int | None = None,
+        date_from: date | None = None,
+        date_to: date | None = None,
+        currency_code: str | None = None,
+        has_document: bool | None = None,
+    ) -> list[TransactionEntry]:
+        debit_filter = _bool_to_int(is_debit) if is_debit is not None else None
+        document_filter = _bool_to_int(has_document) if has_document is not None else None
+        parameters = (
+            business_id,
+            account_number,
+            account_number,
+            debit_filter,
+            debit_filter,
+            min_amount_cents,
+            min_amount_cents,
+            max_amount_cents,
+            max_amount_cents,
+            date_from.isoformat() if date_from is not None else None,
+            date_from.isoformat() if date_from is not None else None,
+            date_to.isoformat() if date_to is not None else None,
+            date_to.isoformat() if date_to is not None else None,
+            currency_code,
+            currency_code,
+            document_filter,
+            document_filter,
+        )
+        cur = self._conn.cursor()
+        _execute(
+            cur,
+            """
+            SELECT t.id AS transaction_id, t.transaction_date, t.description,
+                   t.currency_code, t.posting_reference, a.account_number, a.account_name,
+                   l.amount_cents, l.is_debit,
+                   CASE WHEN EXISTS (
+                       SELECT 1 FROM accounting_transaction_documents AS atd
+                       WHERE atd.transction_id = t.id AND atd.deleted_at IS NULL
+                   ) THEN 1 ELSE 0 END AS has_document
+            FROM accounting_transactions AS t
+            JOIN transaction_lines AS l ON l.transaction_id = t.id
+            JOIN accounts AS a ON a.id = l.account_id
+            WHERE t.business_id = ?
+              AND t.deleted_at IS NULL
+              AND l.deleted_at IS NULL
+              AND (? IS NULL OR a.account_number = ?)
+              AND (? IS NULL OR l.is_debit = ?)
+              AND (? IS NULL OR l.amount_cents >= ?)
+              AND (? IS NULL OR l.amount_cents <= ?)
+              AND (? IS NULL OR t.transaction_date >= ?)
+              AND (? IS NULL OR t.transaction_date <= ?)
+              AND (? IS NULL OR t.currency_code = ?)
+              AND (? IS NULL OR (CASE WHEN EXISTS (
+                  SELECT 1 FROM accounting_transaction_documents AS atd
+                  WHERE atd.transction_id = t.id AND atd.deleted_at IS NULL
+              ) THEN 1 ELSE 0 END) = ?)
+            ORDER BY t.transaction_date DESC, t.id DESC, l.id
+            """,
+            parameters,
+        )
+        return [
+            TransactionEntry(
+                transaction_id=row["transaction_id"],
+                transaction_date=row["transaction_date"],
+                description=row["description"],
+                currency_code=row["currency_code"],
+                posting_reference=row["posting_reference"],
+                account_number=row["account_number"],
+                account_name=row["account_name"],
+                amount_cents=row["amount_cents"],
+                is_debit=_int_to_bool(row["is_debit"]),
+                has_document=_int_to_bool(row["has_document"]),
+            )
+            for row in cur.fetchall()
+        ]
+
+    def document_coverage(self, business_id: int) -> tuple[int, int]:
+        """Return (total active transactions, transactions without documents)."""
+        cur = self._conn.cursor()
+        _execute(
+            cur,
+            """
+            SELECT COUNT(*) AS total,
+                   SUM(CASE WHEN NOT EXISTS (
+                       SELECT 1 FROM accounting_transaction_documents AS atd
+                       -- The schema's legacy column is misspelled as transction_id.
+                       WHERE atd.transction_id = t.id AND atd.deleted_at IS NULL
+                   ) THEN 1 ELSE 0 END) AS without_documents
+            FROM accounting_transactions AS t
+            WHERE t.business_id = ? AND t.deleted_at IS NULL
+            """,
+            (business_id,),
+        )
+        row = cur.fetchone()
+        return (int(row["total"] or 0), int(row["without_documents"] or 0))
+
     def delete(self, transaction_id: int, user_id: int) -> None:
         """Soft-delete the transaction and all its lines."""
         now = _utcnow()
         cur = self._conn.cursor()
 
-        cur.execute(
+        _execute(
+            cur,
             """
             UPDATE accounting_transactions
             SET deleted_at = ?, deleted_by = ?, updated_at = ?, updated_by = ?
@@ -382,7 +786,8 @@ class SqliteTransactionRepository(TransactionRepository):
             (now, user_id, now, user_id, transaction_id),
         )
 
-        cur.execute(
+        _execute(
+            cur,
             """
             UPDATE transaction_lines
             SET deleted_at = ?, deleted_by = ?, updated_at = ?, updated_by = ?

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-heading">
+    <p class="eyebrow">ABOUT THE PROJECT</p>
+    <h1>Accounting software with a clear core.</h1>
+    <p class="lead">The application separates domain rules, application services, and infrastructure so the accounting model stays independent from the web interface.</p>
+</section>
+<section class="prose card">
+    <h2>Built around accounting rules</h2>
+    <p>Transactions use integer cents and must contain at least two lines with equal debit and credit totals. SQLite provides persistence, audit history, and soft deletion.</p>
+    <h2>Designed to grow</h2>
+    <p>The FastAPI interface exposes the application through both a browser-friendly dashboard and interactive OpenAPI documentation.</p>
+</section>
+{% endblock %}

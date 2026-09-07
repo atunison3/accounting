@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 class AccountType(StrEnum):
     ASSET = "Asset"
+    CONTRA_ASSET = "Contra-asset"
     LIABILITY = "Liability"
     EQUITY = "Equity"
     REVENUE = "Revenue"
@@ -13,19 +14,13 @@ class AccountType(StrEnum):
 
 
 class DatabaseModel(BaseModel):
-    model_config = ConfigDict(
-        from_attributes=True,
-        validate_assignment=True,
-    )
+    model_config = ConfigDict(from_attributes=True, validate_assignment=True)
 
     id: int | None = None
-
     created_at: datetime | None = None
     created_by: int | None = None
-
     updated_at: datetime | None = None
     updated_by: int | None = None
-
     deleted_at: datetime | None = None
     deleted_by: int | None = None
 
@@ -50,11 +45,9 @@ class Business(DatabaseModel):
     title: str = Field(min_length=1)
     tax_id: str | None = None
     is_business_active: bool = True
-    established: int | None = Field(
-        default=None,
-        ge=1000,
-        le=9999,
-    )
+    # The schema stores ISO dates; int is retained for compatibility with legacy callers.
+    established: date | int | None = None
+    tax_year_end_month: int = Field(default=12, ge=1, le=12)
 
 
 class Account(DatabaseModel):
@@ -64,11 +57,14 @@ class Account(DatabaseModel):
     account_type: AccountType
     description: str | None = None
     is_account_active: bool = True
+    is_debit: bool = True
 
 
 class AccountingTransaction(DatabaseModel):
+    business_id: int | None = None
     transaction_date: date
     description: str = Field(min_length=1)
+    currency_code: str = Field(default="USD", min_length=3, max_length=3, pattern=r"^[A-Z]{3}$")
     posting_reference: str | None = None
 
 
@@ -98,35 +94,59 @@ class TransactionWithLines(AccountingTransaction):
     def validate_balanced_transaction(self) -> "TransactionWithLines":
         if self.lines and not self.is_balanced:
             raise ValueError("Transaction debits and credits must be equal.")
-
         return self
 
 
 class Mileage(DatabaseModel):
-    business_id: int
+    business_id: int | None = None
     mileage_date: date
     tenth_miles: int = Field(ge=0)
     start_tenth_miles: int | None = Field(default=None, ge=0)
     end_tenth_miles: int | None = Field(default=None, ge=0)
     explanation: str = Field(min_length=1)
+    vehicle: str | None = None
 
     @model_validator(mode="after")
     def validate_mileage(self) -> "Mileage":
         if self.start_tenth_miles is not None and self.end_tenth_miles is not None:
-            if self.end_tenth_miles < self.start_tenth_miles:
-                raise ValueError("End mileage cannot be less than start mileage.")
-
-            calculated_tenth_miles = self.end_tenth_miles - self.start_tenth_miles
-
-            if self.tenth_miles != calculated_tenth_miles:
-                raise ValueError("Tenth miles must equal end mileage minus " "start mileage.")
-
+            if self.end_tenth_miles <= self.start_tenth_miles:
+                raise ValueError("End mileage must be greater than start mileage.")
+            if self.tenth_miles != self.end_tenth_miles - self.start_tenth_miles:
+                raise ValueError("Tenth miles must equal end mileage minus start mileage.")
         return self
 
 
-####################
-# Display Items
-####################
+class Document(DatabaseModel):
+    document_type: str = Field(min_length=1)
+    document_date: date
+    filename: str = Field(min_length=1)
+    file_path: str = Field(min_length=1)
+    title: str | None = None
+    description: str | None = None
+    mime_type: str | None = None
+    file_size_bytes: int | None = Field(default=None, ge=0)
+    sha256_hash: str | None = None
+    source: str | None = None
+    received_from: str | None = None
+    notes: str | None = None
+
+
+class AccountingTransactionDocument(DatabaseModel):
+    transaction_id: int
+    document_id: int
+
+
+class TransactionEntry(BaseModel):
+    transaction_id: int
+    transaction_date: date
+    description: str
+    currency_code: str
+    posting_reference: str | None = None
+    account_number: int
+    account_name: str
+    amount_cents: int
+    is_debit: bool
+    has_document: bool = False
 
 
 class TAccountDisplay(BaseModel):

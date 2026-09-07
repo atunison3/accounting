@@ -11,14 +11,14 @@ c. Trial Balance
 d. General Journal
 e. Chart of Accounts
 f. General Ledger
+2. When closing accounts, temporary entries will be entered (pg. 58).
 
 ### Error Checking
 
-1. When a general ledger is produced, the number of credits and debits shall be checked to ensure they are equal.
-2. A check shall be performed to provide awareness if an entry was made twice.
-3. A check should be performed to ensure all entries are made.
-4. A check should be performed to ensure all debits and credits were posted to the correct account.
-5. a
+1. [X] When a general ledger is produced, the number of credits and debits shall be checked to ensure they are equal.
+2. [ ] A check shall be performed to provide awareness if an entry was made twice.
+3. [ ] A check should be performed to ensure all entries are made.
+4. [ ] A check should be performed to ensure all debits and credits were posted to the correct account.
 
 ### General Journaling
 
@@ -67,3 +67,28 @@ f. General Ledger
 2. The chart of accounts shall include the company name, title ("Chart of Accounts"), and for each active ledgar account, the account number and name of account.
 3. Accounts shall be displayed from top to bottom in the order of assets, liability, owner equity, revenue, and expenses.
 4. Accounts shall be further ordered alpha numerically.
+
+### Earnings Statement
+
+1. The app shall produce an earnings statement.
+2. The earnings statement must state the period of time that it covers.
+3. The earnings statement should have a heading consisting of:
+a. Firm's name.
+b. Statement title.
+c. the time period covered by the statement.
+4. Shows the total of individual expenses deducted from the total of the revenue sources.
+
+### Statement of Financial Position (Balance Sheet)
+
+1. Should have a heading consisting of:
+a. Firm's name.
+b. Name of the statement.
+c. The date of the statement.
+2. List all the asset accounts and their balances on the left side.
+3. List all the liability and owner's equity acocunts and their balances on the right side.
+4. Totals calculated on both sides to show equality.
+
+### Petty Cash
+
+1. Must be able to generate petty cash receipts. Receipts where something was purchased or transacted but no official receipt was given.
+2. Error handling cash: when an error occurs while handling cash, a "Cash short and over" line should appear on the journal.

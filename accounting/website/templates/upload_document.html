@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-heading"><p class="eyebrow">DOCUMENTS</p><h1>Upload a document</h1><p class="lead">Attach a receipt, invoice, or other supporting document directly to a transaction.</p></section>
+<section class="form-card edit-card">
+{% if error %}<div class="notice error" role="alert">{{ error }}</div>{% endif %}
+<form method="post" action="{{ url_for('upload_document_form') }}" enctype="multipart/form-data">
+    <input type="hidden" name="return_to" value="{{ return_to }}">
+    <label for="document-file">Document file</label><input id="document-file" name="document_file" type="file" required>
+    <label for="document-business">Business</label><select id="document-business" name="business_id" required><option value="">Select a business</option>{% for business in businesses %}<option value="{{ business.id }}"{% if business.id == selected_business_id %} selected{% endif %}>{{ business.title }} (ID {{ business.id }})</option>{% endfor %}</select>
+    <label for="document-transaction">Transaction ID</label><input id="document-transaction" name="transaction_id" type="number" min="1" value="{{ selected_transaction_id or '' }}" required>
+    <label for="document-type">Document type</label><input id="document-type" name="document_type" placeholder="Receipt or invoice" required>
+    <label for="document-date">Document date</label><input id="document-date" name="document_date" type="date" required>
+    <label for="document-title">Title <span>(optional)</span></label><input id="document-title" name="title">
+    <label for="document-description">Description <span>(optional)</span></label><textarea id="document-description" name="description" rows="3"></textarea>
+    <label for="document-user">Uploaded by user ID</label><input id="document-user" name="created_by" type="number" min="1" required>
+    <button class="button primary" type="submit">Upload and link document</button>
+</form>
+</section>
+{% endblock %}
