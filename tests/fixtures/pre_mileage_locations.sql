@@ -72,9 +72,7 @@ CREATE TABLE IF NOT EXISTS miles (
     tenth_miles       INTEGER NOT NULL,
     tenth_miles_begin INTEGER,
     tenth_miles_end   INTEGER,
-    business_purpose  TEXT NOT NULL,
-    starting_location TEXT,
-    destination_location TEXT, -- Ordered stops, one per line
+    explanation       TEXT NOT NULL,
     vehicle           TEXT,
 
     created_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -221,7 +219,7 @@ CREATE TABLE IF NOT EXISTS accounting_transaction_documents (
     deleted_by INTEGER REFERENCES users(id)
 );
 
-CREATE TABLE IF NOT EXISTS travel_docs (
+CREATE TABLE IF NOT EXISTS mileage_documents (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     mileage_id INTEGER NOT NULL REFERENCES miles(id),
     document_id INTEGER NOT NULL REFERENCES documents(id),
@@ -340,9 +338,7 @@ CREATE TABLE IF NOT EXISTS miles_history (
     tenth_miles       INTEGER,
     tenth_miles_begin INTEGER,
     tenth_miles_end   INTEGER,
-    business_purpose  TEXT,
-    starting_location TEXT,
-    destination_location TEXT,
+    explanation       TEXT,
     vehicle           TEXT,
 
     created_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -579,20 +575,18 @@ END;
 
 CREATE TRIGGER IF NOT EXISTS trg_miles_audit_update
 BEFORE UPDATE OF business_id, miles_date, tenth_miles, tenth_miles_begin,
-    tenth_miles_end, business_purpose, starting_location, destination_location,
-    vehicle, updated_by, deleted_at, deleted_by
+    tenth_miles_end, explanation, vehicle, updated_by, deleted_at, deleted_by
 ON miles
 FOR EACH ROW
 BEGIN
     INSERT INTO miles_history (
         miles_id, business_id, miles_date, tenth_miles, tenth_miles_begin,
-        tenth_miles_end, business_purpose, starting_location, destination_location, vehicle, created_at, created_by,
+        tenth_miles_end, explanation, vehicle, created_at, created_by,
         updated_at, updated_by, deleted_at, deleted_by
     )
     VALUES (
         OLD.id, OLD.business_id, OLD.miles_date, OLD.tenth_miles,
-        OLD.tenth_miles_begin, OLD.tenth_miles_end, OLD.business_purpose,
-        OLD.starting_location, OLD.destination_location, OLD.vehicle,
+        OLD.tenth_miles_begin, OLD.tenth_miles_end, OLD.explanation, OLD.vehicle,
         OLD.created_at, OLD.created_by, CURRENT_TIMESTAMP, NEW.updated_by,
         OLD.deleted_at, OLD.deleted_by
     );

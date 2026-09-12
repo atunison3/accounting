@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-heading"><h1>Travel documents</h1><p>Mileage log {{ mileage.id }} · {{ mileage.mileage_date }} · {{ mileage.business_purpose }}</p></section>
+<section class="table-card">
+<ul>{% for document in documents %}<li><a href="{{ url_for('download_document', document_id=document.id) }}">{{ document.filename }}</a> · {{ document.document_type }}</li>{% else %}<li>No travel documents attached.</li>{% endfor %}</ul>
+<a class="button secondary" href="{{ url_for('upload_document').include_query_params(business_id=mileage.business_id, mileage_id=mileage.id) }}">Attach travel document</a>
+<a class="button secondary" href="{{ url_for('mileage_dashboard').include_query_params(business_id=mileage.business_id) }}">Back to mileage</a>
+</section>
+{% endblock %}

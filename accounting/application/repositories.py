@@ -111,6 +111,12 @@ class MileageRepository:
     def summary(self, business_id: int, year: int) -> tuple[int, int, int]:
         raise NotImplementedError
 
+    def attach_document(self, mileage_id: int, document_id: int, user_id: int) -> None:
+        raise NotImplementedError
+
+    def documents(self, mileage_id: int) -> list[Document]:
+        raise NotImplementedError
+
 
 class DocumentRepository:
     def add(self, document: Document) -> int:

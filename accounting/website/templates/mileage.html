@@ -16,7 +16,13 @@
 const business = document.getElementById('mileage-business');
 const table = new Tabulator('#mileage-table', {layout: 'fitColumns', placeholder: 'Select a business to see mileage.', columns: [
     {title: 'Date', field: 'date', sorter: 'date'}, {title: 'Miles', field: 'miles', hozAlign: 'right', formatter: cell => Number(cell.getValue()).toFixed(1)},
-    {title: 'Vehicle', field: 'vehicle'}, {title: 'Explanation', field: 'explanation'}, {title: 'Document', field: 'has_document', formatter: cell => cell.getValue() ? 'Attached' : 'Missing'}
+    {title: 'Vehicle', field: 'vehicle'}, {title: 'Business purpose', field: 'business_purpose', formatter: 'plaintext'},
+    {title: 'Starting location', field: 'starting_location', formatter: 'plaintext'},
+    {title: 'Destinations (in order)', field: 'destination_location', formatter: 'textarea'},
+    {title: 'Odometer start', field: 'tenth_miles_begin', formatter: cell => cell.getValue() == null ? '' : (cell.getValue() / 10).toFixed(1)},
+    {title: 'Odometer stop', field: 'tenth_miles_end', formatter: cell => cell.getValue() == null ? '' : (cell.getValue() / 10).toFixed(1)},
+    {title: 'Document', field: 'has_document', formatter: cell => cell.getValue() ? 'Attached' : 'Missing'},
+    {title: 'Documents', field: 'id', width: 170, formatter: cell => `<a href="/documents/upload?business_id=${business.value}&mileage_id=${cell.getValue()}&return_to=${encodeURIComponent(window.location.pathname + window.location.search)}">Attach</a> · <a href="/mileage/${cell.getValue()}/documents">View documents</a>`}
 ]});
 async function loadMileage() {
     if (!business.value) { table.clearData(); document.getElementById('mileage-status').textContent = 'Select a business to load mileage.'; return; }

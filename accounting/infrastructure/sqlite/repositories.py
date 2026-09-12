@@ -118,7 +118,9 @@ def _row_to_mileage(row: sqlite3.Row) -> Mileage:
         tenth_miles=row["tenth_miles"],
         start_tenth_miles=row["tenth_miles_begin"],
         end_tenth_miles=row["tenth_miles_end"],
-        explanation=row["explanation"],
+        business_purpose=row["business_purpose"],
+        starting_location=row["starting_location"],
+        destination_location=row["destination_location"],
         vehicle=row["vehicle"],
         created_at=row["created_at"],
         created_by=row["created_by"],
@@ -369,9 +371,9 @@ class SqliteMileageRepository(MileageRepository):
             """
             INSERT INTO miles (
                 business_id, miles_date, tenth_miles, tenth_miles_begin,
-                tenth_miles_end, explanation, vehicle, created_at, created_by,
-                updated_at, updated_by
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                tenth_miles_end, business_purpose, starting_location, destination_location,
+                vehicle, created_at, created_by, updated_at, updated_by
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 mileage.business_id,
@@ -379,7 +381,9 @@ class SqliteMileageRepository(MileageRepository):
                 mileage.tenth_miles,
                 mileage.start_tenth_miles,
                 mileage.end_tenth_miles,
-                mileage.explanation,
+                mileage.business_purpose,
+                mileage.starting_location,
+                mileage.destination_location,
                 mileage.vehicle,
                 now,
                 mileage.created_by,
@@ -408,9 +412,11 @@ class SqliteMileageRepository(MileageRepository):
         _execute(
             cur,
             """
-            SELECT m.id, m.miles_date, m.tenth_miles, m.explanation, m.vehicle,
+            SELECT m.id, m.miles_date, m.tenth_miles, m.business_purpose, m.vehicle,
+                   m.starting_location, m.destination_location, m.tenth_miles_begin, m.tenth_miles_end,
                    CASE WHEN EXISTS (
-                       SELECT 1 FROM mileage_documents AS md
+                       SELECT 1 FROM travel_docs AS md
+                       JOIN documents AS d ON d.id = md.document_id AND d.deleted_at IS NULL
                        WHERE md.mileage_id = m.id AND md.deleted_at IS NULL
                    ) THEN 1 ELSE 0 END AS has_document
             FROM miles AS m
@@ -424,6 +430,25 @@ class SqliteMileageRepository(MileageRepository):
         )
         return [dict(row) for row in cur.fetchall()]
 
+    def attach_document(self, mileage_id: int, document_id: int, user_id: int) -> None:
+        _execute(
+            self._conn.cursor(),
+            "INSERT INTO travel_docs (mileage_id, document_id, created_by) VALUES (?, ?, ?)",
+            (mileage_id, document_id, user_id),
+        )
+
+    def documents(self, mileage_id: int) -> list[Document]:
+        cur = self._conn.cursor()
+        _execute(
+            cur,
+            """
+            SELECT DISTINCT d.* FROM documents AS d JOIN travel_docs AS td ON td.document_id = d.id
+            WHERE td.mileage_id = ? AND td.deleted_at IS NULL AND d.deleted_at IS NULL ORDER BY d.id
+        """,
+            (mileage_id,),
+        )
+        return [_row_to_document(row) for row in cur.fetchall()]
+
     def summary(self, business_id: int, year: int) -> tuple[int, int, int]:
         cur = self._conn.cursor()
         _execute(
@@ -431,7 +456,8 @@ class SqliteMileageRepository(MileageRepository):
             """
             SELECT COUNT(*) AS total, COALESCE(SUM(m.tenth_miles), 0) AS tenths,
                    COALESCE(SUM(CASE WHEN NOT EXISTS (
-                       SELECT 1 FROM mileage_documents AS md
+                       SELECT 1 FROM travel_docs AS md
+                       JOIN documents AS d ON d.id = md.document_id AND d.deleted_at IS NULL
                        WHERE md.mileage_id = m.id AND md.deleted_at IS NULL
                    ) THEN 1 ELSE 0 END), 0) AS without_documents
             FROM miles AS m

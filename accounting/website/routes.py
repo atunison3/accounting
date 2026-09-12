@@ -170,13 +170,17 @@ def create_mileage_form(  # noqa: PLR0913, PLR0917
     business_id: int = Form(...),
     mileage_date: date = Form(...),  # noqa: B008
     miles: Decimal = Form(...),  # noqa: B008
-    explanation: str = Form(...),
+    business_purpose: str = Form(...),
+    starting_location: str = Form(...),
+    destination_location: str = Form(...),
     created_by: int = Form(...),
     start_miles: Decimal | None = Form(None),  # noqa: B008
     end_miles: Decimal | None = Form(None),  # noqa: B008
     vehicle: str | None = Form(None),
 ) -> HTMLResponse | RedirectResponse:
     try:
+        if not starting_location.strip() or not destination_location.strip():
+            raise ValueError("Starting location and at least one destination are required.")
         start_tenths = _miles_to_tenths(start_miles) if start_miles is not None else None
         end_tenths = _miles_to_tenths(end_miles) if end_miles is not None else None
         mileage = Mileage(
@@ -185,7 +189,9 @@ def create_mileage_form(  # noqa: PLR0913, PLR0917
             tenth_miles=_miles_to_tenths(miles),
             start_tenth_miles=start_tenths,
             end_tenth_miles=end_tenths,
-            explanation=explanation,
+            business_purpose=business_purpose.strip(),
+            starting_location=starting_location.strip(),
+            destination_location="\n".join(stop.strip() for stop in destination_location.splitlines() if stop.strip()),
             vehicle=vehicle or None,
             created_by=created_by,
         )
@@ -218,6 +224,7 @@ def upload_document(
     request: Request,
     business_id: int | None = None,
     transaction_id: int | None = None,
+    mileage_id: int | None = None,
     return_to: str | None = None,
 ) -> HTMLResponse:
     with get_connection(_database_path(request)) as connection:
@@ -230,7 +237,8 @@ def upload_document(
             "businesses": businesses,
             "selected_business_id": business_id,
             "selected_transaction_id": transaction_id,
-            "return_to": return_to or "/transactions",
+            "mileage_id": mileage_id,
+            "return_to": return_to or (f"/mileage?business_id={business_id}" if mileage_id else "/transactions"),
             "error": None,
         },
     )
@@ -241,7 +249,8 @@ def upload_document_form(  # noqa: PLR0913, PLR0917
     request: Request,
     document_file: UploadFile = File(...),  # noqa: B008
     business_id: int = Form(...),
-    transaction_id: int = Form(...),
+    transaction_id: int | None = Form(None),
+    mileage_id: int | None = Form(None),
     document_type: str = Form(...),
     document_date: date = Form(...),  # noqa: B008
     created_by: int = Form(...),
@@ -255,11 +264,17 @@ def upload_document_form(  # noqa: PLR0913, PLR0917
             raise ValueError("A document file is required.")
         with get_connection(_database_path(request)) as connection:
             business = SqliteBusinessRepository(connection).get_by_id(business_id)
-            transaction = SqliteTransactionRepository(connection).get_by_id(transaction_id)
+            if (transaction_id is None) == (mileage_id is None):
+                raise ValueError("Select either a transaction or a mileage log.")
+            target = (
+                SqliteTransactionRepository(connection).get_by_id(transaction_id)
+                if transaction_id is not None
+                else SqliteMileageRepository(connection).get_by_id(cast(int, mileage_id))
+            )
             if business is None:
                 raise ValueError("Business not found.")
-            if transaction is None or transaction.business_id != business_id:
-                raise ValueError("Transaction not found for this business.")
+            if target is None or target.business_id != business_id:
+                raise ValueError("Record not found for this business.")
 
             content = document_file.file.read()
             extension = Path(document_file.filename).suffix.lower()
@@ -282,13 +297,16 @@ def upload_document_form(  # noqa: PLR0913, PLR0917
                 created_by=created_by,
             )
             document_id = SqliteDocumentRepository(connection).add(document)
-            SqliteTransactionDocumentRepository(connection).add(
-                AccountingTransactionDocument(
-                    transaction_id=transaction_id,
-                    document_id=document_id,
-                    created_by=created_by,
+            if mileage_id is not None:
+                SqliteMileageRepository(connection).attach_document(mileage_id, document_id, created_by)
+            else:
+                SqliteTransactionDocumentRepository(connection).add(
+                    AccountingTransactionDocument(
+                        transaction_id=cast(int, transaction_id),
+                        document_id=document_id,
+                        created_by=created_by,
+                    )
                 )
-            )
     except Exception as exc:
         if stored_path is not None:
             stored_path.unlink(missing_ok=True)
@@ -303,7 +321,8 @@ def upload_document_form(  # noqa: PLR0913, PLR0917
                 "businesses": businesses,
                 "selected_business_id": business_id,
                 "selected_transaction_id": transaction_id,
-                "return_to": return_to or "/transactions",
+                "mileage_id": mileage_id,
+                "return_to": return_to or (f"/mileage?business_id={business_id}" if mileage_id else "/transactions"),
                 "error": str(exc),
             },
             status_code=400,
@@ -311,7 +330,11 @@ def upload_document_form(  # noqa: PLR0913, PLR0917
     destination = (
         return_to
         if return_to and return_to.startswith("/") and not return_to.startswith("//")
-        else f"/transactions?business_id={business_id}&has_document=false"
+        else (
+            f"/mileage?business_id={business_id}"
+            if mileage_id is not None
+            else f"/transactions?business_id={business_id}&has_document=false"
+        )
     )
     return RedirectResponse(url=destination, status_code=303)
 
@@ -489,6 +512,25 @@ def mileage_dashboard(request: Request, business_id: int | None = None, year: in
             "summary": summary,
             "year": year or date.today().year,
             "selected_business_id": business_id,
+        },
+    )
+
+
+@router.get("/mileage/{mileage_id}/documents", response_class=HTMLResponse, name="mileage_documents")
+def mileage_documents(request: Request, mileage_id: int) -> HTMLResponse:
+    with get_connection(_database_path(request)) as connection:
+        repository = SqliteMileageRepository(connection)
+        mileage = repository.get_by_id(mileage_id)
+        documents = repository.documents(mileage_id)
+    if mileage is None:
+        raise HTTPException(404, "Mileage log not found")
+    return templates.TemplateResponse(
+        request=request,
+        name="travel_documents.html",
+        context={
+            "page_title": "Travel documents",
+            "mileage": mileage,
+            "documents": documents,
         },
     )
 
