@@ -1,6 +1,7 @@
 [project]
 name = "accounting"
 version = "0.1.0"
+license = { file = "LICENSE" }
 description = "A simple accounting system with dunder addition support"
 authors = [
     { name="Andy Tunison", email="andrew.e.tunison@gmail.com" }

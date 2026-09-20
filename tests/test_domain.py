@@ -234,7 +234,7 @@ class TestMileage(unittest.TestCase):
             tenth_miles=125,
             start_tenth_miles=10_000,
             end_tenth_miles=10_125,
-            explanation="Drove to client",
+            business_purpose="Drove to client",
         )
 
         self.assertEqual(mileage.business_id, 1)
@@ -242,7 +242,7 @@ class TestMileage(unittest.TestCase):
         self.assertEqual(mileage.tenth_miles, 125)
         self.assertEqual(mileage.start_tenth_miles, 10_000)
         self.assertEqual(mileage.end_tenth_miles, 10_125)
-        self.assertEqual(mileage.explanation, "Drove to client")
+        self.assertEqual(mileage.business_purpose, "Drove to client")
 
     def test_mileage_rejects_negative_miles(self) -> None:
         with self.assertRaises(ValidationError):
@@ -250,7 +250,7 @@ class TestMileage(unittest.TestCase):
                 business_id=1,
                 mileage_date=date(2026, 8, 7),
                 tenth_miles=-10,
-                explanation="Invalid mileage",
+                business_purpose="Invalid mileage",
             )
 
     def test_mileage_rejects_end_mileage_less_than_start(self) -> None:
@@ -261,7 +261,7 @@ class TestMileage(unittest.TestCase):
                 tenth_miles=100,
                 start_tenth_miles=10_100,
                 end_tenth_miles=10_000,
-                explanation="Invalid mileage",
+                business_purpose="Invalid mileage",
             )
 
     def test_mileage_rejects_incorrect_calculated_mileage(self) -> None:
@@ -272,7 +272,7 @@ class TestMileage(unittest.TestCase):
                 tenth_miles=200,
                 start_tenth_miles=10_000,
                 end_tenth_miles=10_100,
-                explanation="Mileage does not match odometer values",
+                business_purpose="Mileage does not match odometer values",
             )
 
 

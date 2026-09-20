@@ -5,6 +5,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
 
+from .mileage_migration import migrate_mileage
+
 SCHEMA_FILE_PATH = Path(__file__).with_name("schema.sql")
 DATA_DIR = Path.home() / ".app_data" / "accounting"
 DEFAULT_DATABASE_PATH = DATA_DIR / "accounting.db"
@@ -18,6 +20,7 @@ def create_connection(db_path: str | Path = DEFAULT_DATABASE_PATH) -> sqlite3.Co
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute("PRAGMA journal_mode = WAL")
+    migrate_mileage(conn)
     conn.executescript(SCHEMA_FILE_PATH.read_text(encoding="utf-8"))
     _remove_legacy_user_credential_column(conn)
     _migrate_transaction_business_id(conn)

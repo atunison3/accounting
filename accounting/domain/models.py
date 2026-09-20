@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 
 class AccountType(StrEnum):
@@ -103,8 +103,15 @@ class Mileage(DatabaseModel):
     tenth_miles: int = Field(ge=0)
     start_tenth_miles: int | None = Field(default=None, ge=0)
     end_tenth_miles: int | None = Field(default=None, ge=0)
-    explanation: str = Field(min_length=1)
+    business_purpose: str = Field(min_length=1, validation_alias=AliasChoices("business_purpose", "explanation"))
+    starting_location: str | None = None
+    destination_location: str | None = None  # Ordered stops, one per line.
     vehicle: str | None = None
+
+    @property
+    def explanation(self) -> str:
+        """Compatibility with older callers; persisted/serialized as business_purpose."""
+        return self.business_purpose
 
     @model_validator(mode="after")
     def validate_mileage(self) -> "Mileage":

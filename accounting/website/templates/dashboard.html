@@ -53,7 +53,9 @@
             <label for="start-miles">Starting odometer <span>(optional)</span></label><input id="start-miles" name="start_miles" type="number" min="0" step="0.1">
             <label for="end-miles">Ending odometer <span>(optional)</span></label><input id="end-miles" name="end_miles" type="number" min="0" step="0.1">
             <label for="mileage-vehicle">Vehicle <span>(optional)</span></label><input id="mileage-vehicle" name="vehicle">
-            <label for="mileage-explanation">Explanation</label><input id="mileage-explanation" name="explanation" required>
+            <label for="mileage-purpose">Business purpose</label><input id="mileage-purpose" name="business_purpose" required>
+            <label for="mileage-starting-location">Starting location</label><input id="mileage-starting-location" name="starting_location" required>
+            <label for="mileage-destination">Destination(s) in travel order</label><textarea id="mileage-destination" name="destination_location" rows="3" placeholder="One stop per line: city, town, area, or address" required></textarea>
             <label for="mileage-user">Created by user ID</label><input id="mileage-user" name="created_by" type="number" min="1" required>
             <button class="button primary" type="submit">Log mileage</button>
         </form>

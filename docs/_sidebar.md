@@ -13,3 +13,5 @@
   - [Contributor Guide](contributing/README.md)
   - [Development Setup](contributing/development-setup.md)
   - [Testing and Quality](contributing/testing.md)
+
+- [Buy me a coffee](https://www.buymeacoffee.com/atunison)

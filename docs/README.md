@@ -50,3 +50,11 @@ transaction_id = service.create_transaction(
 ## Contributing
 
 See the [contributor guide](contributing/README.md) for development setup, tests, and quality checks.
+
+## Support the project
+
+If this project helps you, consider buying Andy a coffee. Support is optional and appreciated!
+
+<a href="https://www.buymeacoffee.com/atunison" target="_blank" rel="noopener noreferrer">
+  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" width="217" height="60" style="max-width: 100%; height: auto;">
+</a>
