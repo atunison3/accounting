@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 from accounting.infrastructure.sqlite.connection import create_connection, get_connection
 from accounting.infrastructure.sqlite.repositories import SqliteMileageRepository
 from accounting.website.app import create_app
+from accounting.website.mileage_pdf import mileage_pdf, miles
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -84,6 +85,39 @@ class TestMileageChanges(unittest.TestCase):
                 )
             finally:
                 connection.close()
+
+    def test_mileage_pdf_export_and_filters(self) -> None:
+        app = create_app()
+        app.state.db_path = self.database
+        with TestClient(app) as client:
+            response = client.get("/mileage/pdf?business_id=1&date_from=2026-08-01&date_to=2026-08-31")
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.headers["content-type"], "application/pdf")
+            self.assertTrue(response.content.startswith(b"%PDF-"))
+            self.assertIn("mileage-log-1.pdf", response.headers["content-disposition"])
+            # Empty queries also produce printable reports.
+            self.assertEqual(client.get("/mileage/pdf?business_id=1&vehicle=Unknown").status_code, 200)
+            self.assertEqual(client.get("/mileage/pdf?business_id=999").status_code, 404)
+            self.assertEqual(
+                client.get("/mileage/pdf?business_id=1&date_from=2026-09-01&date_to=2026-08-01").status_code, 422
+            )
+
+    def test_printable_mileage_wraps_and_paginates(self) -> None:
+        self.assertEqual(miles(125), "12.5")
+        self.assertEqual(miles(0), "0.0")
+        self.assertEqual(miles(None), "—")
+        row = {
+            "miles_date": "2026-08-18",
+            "tenth_miles": 125,
+            "vehicle": "Car",
+            "starting_location": "Home & office",
+            "destination_location": "Clinic\nBank\nHome",
+            "tenth_miles_begin": None,
+            "tenth_miles_end": None,
+            "business_purpose": "Client visits <appointments> " * 15,
+        }
+        report = mileage_pdf("Business & Co", [row] * 60, None, None, None)
+        self.assertTrue(report.startswith(b"%PDF-"))
 
     def test_create_multistop_trip_attach_and_download(self) -> None:
         app = create_app()

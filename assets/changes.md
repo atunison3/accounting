@@ -1,6 +1,6 @@
 # Mileage Tracker Changes
 
-This document is to plan out the changes needed for the mileage tracker. The scope of the mileage tracker is not for large travel expenses it is simply for ordinary trips using personal vehicles. The basis of these changes is to better align with chapter 5 of [IRS Pub 463](https://www.irs.gov/publications/p463?utm_source=chatgpt.com#en_US_2025_publink100034064). Chapter 5 provides a reference (not an official form) of a daily mileage tracker. 
+This document is to plan out the changes needed for the mileage tracker. The scope of the mileage tracker is not for large travel expenses it is simply for ordinary trips using personal vehicles. The basis of these changes is to better align with chapter 5 of [IRS Pub 463](https://www.irs.gov/publications/p463?utm_source=chatgpt.com#en_US_2025_publink100034064). Chapter 5 provides a reference (not an official form) of a daily mileage tracker.
 
 - date
 - destination

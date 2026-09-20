@@ -11,6 +11,7 @@ from typing import cast
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
+from accounting.website.mileage_pdf import mileage_pdf
 
 from accounting.application.services import AccountService, AccountingService, AnalyticsService, MileageService
 from accounting.domain.models import (
@@ -531,6 +532,31 @@ def mileage_documents(request: Request, mileage_id: int) -> HTMLResponse:
             "page_title": "Travel documents",
             "mileage": mileage,
             "documents": documents,
+        },
+    )
+
+
+@router.get("/mileage/pdf", name="mileage_pdf_export")
+def mileage_pdf_export(
+    request: Request,
+    business_id: int,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    vehicle: str | None = None,
+) -> StreamingResponse:
+    if date_from is not None and date_to is not None and date_from > date_to:
+        raise HTTPException(422, "From date must be on or before to date.")
+    with get_connection(_database_path(request)) as connection:
+        business = SqliteBusinessRepository(connection).get_by_id(business_id)
+        if business is None:
+            raise HTTPException(404, "Business not found")
+        rows = SqliteMileageRepository(connection).search(business_id, date_from, date_to, vehicle or None)
+    content = mileage_pdf(business.title, rows, date_from, date_to, vehicle or None)
+    return StreamingResponse(
+        BytesIO(content),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="mileage-log-{business_id}.pdf"',
         },
     )
 

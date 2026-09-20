@@ -426,7 +426,15 @@ class SqliteMileageRepository(MileageRepository):
               AND (? IS NULL OR m.vehicle = ?)
             ORDER BY m.miles_date DESC, m.id DESC
             """,
-            (business_id, date_from, date_from, date_to, date_to, vehicle, vehicle),
+            (
+                business_id,
+                date_from.isoformat() if date_from else None,
+                date_from.isoformat() if date_from else None,
+                date_to.isoformat() if date_to else None,
+                date_to.isoformat() if date_to else None,
+                vehicle,
+                vehicle,
+            ),
         )
         return [dict(row) for row in cur.fetchall()]
 
