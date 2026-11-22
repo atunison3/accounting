@@ -11,7 +11,12 @@ import shlex
 import subprocess
 import tempfile
 
-from manage import load_config
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from deploy.manage import load_config
+else:
+    from manage import load_config
 
 
 def run(*args, **kwargs):
@@ -34,8 +39,9 @@ def main():
         parser.error("Tag must contain only letters, digits, dots, underscores, and hyphens")
     repository = Path(__file__).resolve().parent.parent
     ref = f"refs/tags/{args.tag}"
-    commit = run("git", "-C", str(repository), "rev-parse", "--verify", f"{ref}^{{commit}}",
-                 stdout=subprocess.PIPE).stdout.strip()
+    commit = run(
+        "git", "-C", str(repository), "rev-parse", "--verify", f"{ref}^{{commit}}", stdout=subprocess.PIPE
+    ).stdout.strip()
     destination = f"{target['home']}/apps/accounting-{args.tag}"
     print(f"Release: {args.tag} ({commit})")
     print(f"Destination: {host}:{destination}")
@@ -49,10 +55,10 @@ def main():
     run("ssh", host, f"test ! -e {quote(destination)}")
     with tempfile.TemporaryDirectory(prefix="accounting-release-") as temporary:
         archive = Path(temporary) / "release.tar.gz"
-        run("git", "-C", str(repository), "archive", "--format=tar.gz",
-            f"--output={archive}", commit)
-        remote_temp = run("ssh", host, "umask 077; mktemp -d /tmp/accounting-release.XXXXXXXX",
-                          stdout=subprocess.PIPE).stdout.strip()
+        run("git", "-C", str(repository), "archive", "--format=tar.gz", f"--output={archive}", commit)
+        remote_temp = run(
+            "ssh", host, "umask 077; mktemp -d /tmp/accounting-release.XXXXXXXX", stdout=subprocess.PIPE
+        ).stdout.strip()
         if not re.fullmatch(r"/tmp/accounting-release\.[A-Za-z0-9]+", remote_temp):
             raise RuntimeError("Unexpected remote temporary path; refusing to upload")
         try:

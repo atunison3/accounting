@@ -4,6 +4,13 @@ Commit this directory's tools, example config, and instructions. Keep each real
 server's config private. Python 3.11+ and systemd are required (Ubuntu 24.04 is a
 suitable baseline). No Docker is required. Run commands individually; stop on errors.
 
+## Remote MCP access for Pi
+
+See [MCP setup](MCP.md) for authenticated transaction tools on the Ubuntu server.
+An optional private `[mcp]` config enables automatic service/token setup during
+archive deployment. MCP defaults to port **8003**, separate from the website.
+Use an SSH tunnel or HTTPS to protect credentials and financial data in transit.
+
 ## Recommended: one-command archive deployment from your Mac
 
 No Git checkout is needed on Ubuntu. First stop the local accounting app, MCP
