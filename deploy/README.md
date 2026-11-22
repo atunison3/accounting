@@ -4,6 +4,98 @@ Commit this directory's tools, example config, and instructions. Keep each real
 server's config private. Python 3.11+ and systemd are required (Ubuntu 24.04 is a
 suitable baseline). No Docker is required. Run commands individually; stop on errors.
 
+## Recommended: one-command archive deployment from your Mac
+
+No Git checkout is needed on Ubuntu. First stop the local accounting app, MCP
+server, and any scripts writing its database. Stop other server-side writers too;
+the script manages only the configured systemd service. Make sure SSH works and
+the SSH user has sudo permission. Ubuntu needs Python 3.11+ and `tar`; the script
+installs `python3-venv` with apt. The server needs internet access for apt/pip.
+
+Preview:
+
+```bash
+python deploy/deploy_archive.py --config deploy/home.local.toml --tag v0.1.0
+```
+
+First deployment (run on the Mac):
+
+```bash
+python deploy/deploy_archive.py --config deploy/home.local.toml --tag v0.1.0 \
+  --writers-stopped --apply
+```
+
+This does the complete application/data installation:
+
+1. Archives the exact local Git tag and snapshots the local database using SQLite
+   backup, together with documents/logs. Source data is left untouched.
+2. Keeps a private snapshot under `~/accounting-deployment-backups/` on the Mac.
+3. Uses a shared SSH connection to upload the archive, snapshot, and private settings.
+4. Checks transfer hashes, reuses an already copied release only if its commit
+   marker and tracked file contents match, or extracts a new release directory.
+5. Refuses to overwrite an existing server data directory in first mode.
+6. Installs dependencies in a Linux venv, backs up data on Ubuntu, imports the
+   snapshot, and updates document paths.
+7. Generates the service with the correct archive release path automatically,
+   enables startup on boot, starts the app, and checks HTTP.
+
+SSH authentication and sudo may prompt; no passwords are stored. The deployment
+helper files are uploaded from your current local `deploy/` directory, so this
+works with an older tag that does not yet contain these helpers. Application code
+still comes strictly from the tag. Do not run the script from an untrusted checkout.
+No firewall rules are changed. Review the network-security section below before
+running: a private IP is not authentication, and internet mode still requires an
+authenticated HTTPS proxy. The script does not configure DNS, TLS, or a proxy.
+
+Later releases use the server's existing data, **never** a fresh local copy:
+
+```bash
+python deploy/deploy_archive.py --config deploy/home.local.toml --tag <new-tag> \
+  --mode update --writers-stopped --apply
+```
+
+The updater stops the service, keeps a complete server data backup and previous
+unit under `~/accounting-backups/`, then installs/starts the selected release.
+Other server writers must be stopped manually. An update to the same release can
+modify that release's venv; dependency records are saved when present.
+
+If a step fails, stop and read the error. Local backups are retained, and failed
+remote staging is retained at the printed path. First mode deliberately refuses
+to overwrite even partially imported data on retry: inspect it rather than deleting
+it blindly or switching modes just to bypass the check. A failed health check
+stops the service. Earlier failures can leave it stopped or data imported but not
+started; there is no automatic rollback. Follow the rollback guidance below and
+reconcile any new writes before restoring data. Verify records, attachments, and
+restart persistence after the automatic HTTP check succeeds.
+
+## Alternative: copy only a release without Git on Ubuntu
+
+Run on your development machine from the repository root:
+
+```bash
+# Preview (no SSH or file changes):
+python3 deploy/copy_release.py --config deploy/home.local.toml --tag v0.1.0
+# Archive, upload, and extract:
+python3 deploy/copy_release.py --config deploy/home.local.toml --tag v0.1.0 --apply
+```
+
+This uses local Git to export the exact tag, then SSH/SCP to create
+`<target.home>/apps/accounting-<tag>` on Ubuntu. It refuses to overwrite an
+existing directory. SSH aliases (including custom ports via `~/.ssh/config`)
+are supported. Your private config is transferred separately to
+`deploy/target.local.toml` with owner-only permissions. Uncommitted files,
+ignored files, `.git`, and your local virtual environment are not exported.
+Only export trusted release tags. Review tracked files for secrets before copying.
+
+**This is a source-copy step, not an installer.** It does not transfer the
+accounting database/documents, install dependencies, or start systemd. If a
+transfer/extraction fails, inspect any partial release directory before retrying;
+it is deliberately not deleted automatically. The existing `manage.py deploy`
+action requires Git and cannot deploy from this archive. For manual systemd setup,
+change `target.checkout` in the copied config to the extracted release directory
+before rendering a service unit. The Git-based end-to-end workflow below remains
+available; do not mix its checkout commands with this archive-only alternative.
+
 ## Configuration and privacy
 
 ```bash
