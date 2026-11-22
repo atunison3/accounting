@@ -130,8 +130,8 @@ h2 { line-height: 1.15; letter-spacing: -.03em; }
 .chart-title h3 { font-size: 1.15rem; margin: 4px 0 22px; }
 .chart-actions { display: flex; gap: 10px; justify-content: flex-end; margin-bottom: 14px; }
 .category-row th { background: #e6f3f0; color: var(--accent-dark); font-size: .9rem; text-align: left; }
-.chart-table th:first-child, .chart-table td:first-child { width: 30%; }
-@media print { .site-header, .footer, .page-heading, .selector-card, .chart-actions { display: none; } body { background: white; } .container { width: 100%; } .chart-paper { border: 0; margin: 0; } .chart-title { display: block; } }
+.chart-table th:first-child, .chart-table td:first-child { width: 15%; }
+@media print { .site-header, .footer, .page-heading, .selector-card, .chart-actions, .screen-only { display: none; } body { background: white; } .container { width: 100%; } .chart-paper { border: 0; margin: 0; } .chart-title { display: block; } }
 .table-heading span { color: var(--muted); font-size: .9rem; }
 .table-wrap { overflow-x: auto; }
 table { border-collapse: collapse; min-width: 700px; width: 100%; }
