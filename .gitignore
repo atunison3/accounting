@@ -6,6 +6,11 @@ my_sandbox.ipynb
 accounting.db
 pr-description.md
 
+# Machine-specific deployment settings, generated files, and private notes
+/deploy/*.local.toml
+/deploy/generated/
+/.deploy-local/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
