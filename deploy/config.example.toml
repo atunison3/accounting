@@ -1,0 +1,20 @@
+# Copy to deploy/home.local.toml or deploy/cloud.local.toml (Git-ignored).
+# No passwords or private keys here: use SSH keys/agent or an SSH config alias.
+[target]
+ssh = "deploy@example-host" # Used for your SSH/rsync commands, not by systemd
+user = "deploy"
+home = "/home/deploy"
+checkout = "/home/deploy/accounting"
+service = "accounting"
+# Data currently follows the service user's home: <home>/.app_data/accounting.
+
+[web]
+# lan: optionally bind a private IP, with a scoped firewall rule.
+# internet: loopback only; supply authenticated HTTPS reverse proxy separately.
+mode = "lan"
+bind = "127.0.0.1"
+port = 8000
+
+[migration]
+# Original absolute documents directory; only used during initial data migration.
+old_documents = "/absolute/path/to/source/.app_data/accounting/documents"

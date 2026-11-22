@@ -7,6 +7,7 @@ authors = [
     { name="Andy Tunison", email="andrew.e.tunison@gmail.com" }
 ]
 dependencies = [
+    "pydantic[email]>=2.0",
     "fastapi>=0.115",
     "jinja2>=3.1",
     "uvicorn>=0.30",
@@ -59,6 +60,10 @@ build-backend = "setuptools.build_meta"
 [tool.coverage.run]
 branch = true
 source = ["."]
+
+[tool.setuptools.package-data]
+"accounting.infrastructure.sqlite" = ["*.sql"]
+"accounting.website" = ["templates/*.html", "static/*", "static/**/*"]
 
 [tool.setuptools.packages.find]
 where = ["."]
