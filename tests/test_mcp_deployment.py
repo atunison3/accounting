@@ -50,7 +50,13 @@ class TestMCPDeployment(unittest.TestCase):
         self.assertFalse((self.home / ".config").exists())
 
     def test_unsafe_bind_conflicting_port_and_missing_identity_rejected(self):
-        cases = [{"bind": "0.0.0.0"}, {"bind": "8.8.8.8"}, {"port": 8002}, {"user_id": None}]
+        cases = [
+            # Deliberately unsafe input: verify rejection without opening a listener.
+            {"bind": "0.0.0.0"},  # nosec B104
+            {"bind": "8.8.8.8"},
+            {"port": 8002},
+            {"user_id": None},
+        ]
         for changes in cases:
             with self.subTest(changes=changes):
                 config = {**self.config, "mcp": {**self.config["mcp"], **changes}}
