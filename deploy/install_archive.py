@@ -14,6 +14,12 @@ import tarfile
 import time
 import urllib.request
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from deploy.configure_mcp import configure_mcp
+else:
+    from configure_mcp import configure_mcp
 
 
 def run(*args, **kwargs):
@@ -38,7 +44,8 @@ def extract(archive, destination):
         tar.extractall(destination, members=members)
 
 
-def main():
+# Linear orchestration intentionally keeps backup/install/recovery ordering visible.
+def main():  # noqa: C901, PLR0912, PLR0915
     os.umask(0o077)
     bundle = Path(sys.argv[1]).resolve()
     settings = json.loads((bundle / "settings.json").read_text())
@@ -60,7 +67,11 @@ def main():
     if not first and not (data / "accounting.db").is_file():
         raise RuntimeError("Update requires an existing server database")
     service = target["service"] + ".service"
-    if first and subprocess.run(["systemctl", "is-active", "--quiet", service]).returncode == 0:
+    mcp_service = target["service"] + "-mcp.service"
+    mcp_unit = Path("/etc/systemd/system") / mcp_service
+    if mcp_unit.exists() and "mcp" not in settings["config"]:
+        raise RuntimeError("An MCP service exists. Include [mcp] settings (enabled=true or false) for a safe upgrade.")
+    if first and subprocess.run(["systemctl", "is-active", "--quiet", service], check=False).returncode == 0:
         raise RuntimeError("First deployment requires the existing service to be stopped")
     if release.exists():
         marker = release / "RELEASE_COMMIT"
@@ -82,6 +93,10 @@ def main():
         (release / "RELEASE_COMMIT").write_text(settings["commit"] + "\n")
     # Avoid modifying a live environment when redeploying the same release.
     run("sudo", "-v")
+    if mcp_unit.exists():
+        run("sudo", "systemctl", "stop", mcp_service)
+        if not settings["config"].get("mcp", {}).get("enabled", False):
+            run("sudo", "systemctl", "disable", mcp_service)
     if not first:
         run("sudo", "systemctl", "stop", service)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
@@ -91,6 +106,9 @@ def main():
     if old_unit.exists():
         previous = run("sudo", "cat", str(old_unit), stdout=subprocess.PIPE).stdout
         (backup / "previous.service").write_text(previous)
+    if mcp_unit.exists():
+        previous_mcp = run("sudo", "cat", str(mcp_unit), stdout=subprocess.PIPE).stdout
+        (backup / "previous-mcp.service").write_text(previous_mcp)
     if not first:
         shutil.copytree(data, backup / "data")
     print(f"Backup directory: {backup}", flush=True)
@@ -114,15 +132,21 @@ def main():
         data.parent.mkdir(parents=True, exist_ok=True)
         # No existing data is replaced; failures retain the imported data for recovery.
         shutil.copytree(staged, data)
-        run(str(python), str(bundle / "relocate_documents.py"), "--data-dir", str(data),
-            "--old-root", settings["old_documents"], "--apply")
-    run("sudo", "install", "-o", "root", "-g", "root", "-m", "600",
-        str(bundle / "accounting.service"), str(old_unit))
+        run(
+            str(python),
+            str(bundle / "relocate_documents.py"),
+            "--data-dir",
+            str(data),
+            "--old-root",
+            settings["old_documents"],
+            "--apply",
+        )
+    run("sudo", "install", "-o", "root", "-g", "root", "-m", "600", str(bundle / "accounting.service"), str(old_unit))
     run("sudo", "systemctl", "daemon-reload")
     run("sudo", "systemctl", "enable", "--now", service)
     url = f"http://{web['bind']}:{web['port']}/"
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-    for attempt in range(30):
+    for _attempt in range(30):
         try:
             with opener.open(url, timeout=3) as response:
                 if response.status == 200:
@@ -132,7 +156,10 @@ def main():
         time.sleep(1)
     else:
         run("sudo", "systemctl", "stop", service)
-        raise RuntimeError(f"HTTP health check failed; service stopped. Inspect journalctl -u {service}. Backup: {backup}")
+        raise RuntimeError(
+            f"HTTP health check failed; service stopped. Inspect journalctl -u {service}. Backup: {backup}"
+        )
+    configure_mcp(settings["config"])
     (backup / "deployed-commit.txt").write_text(settings["commit"] + "\n")
     print(f"Deployment healthy: {url}\nVerify records and attachments before accepting writes.", flush=True)
 

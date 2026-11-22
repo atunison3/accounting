@@ -40,8 +40,10 @@ def load_config(path):
         raise ValueError("web.mode must be lan or internet")
     if web["mode"] == "internet" and not address.is_loopback:
         raise ValueError("Internet deployments must bind to loopback behind an authenticated HTTPS proxy")
-    private = any(address in ipaddress.ip_network(network) for network in
-                  ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.0/8"))
+    private = any(
+        address in ipaddress.ip_network(network)
+        for network in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.0/8")
+    )
     if web["mode"] == "lan" and not private:
         raise ValueError("LAN deployments must bind to a private or loopback address, never 0.0.0.0")
     if type(web["port"]) is not int or not 1024 <= web["port"] <= 65535:
@@ -51,6 +53,10 @@ def load_config(path):
 
 def unit(config):
     target, web = config["target"], config["web"]
+    command = (
+        f"{target['checkout']}/.venv/bin/python -m uvicorn accounting.main:app "
+        f"--host {web['bind']} --port {web['port']} --workers 1 --no-proxy-headers"
+    )
     return f"""[Unit]
 Description=Accounting web application
 After=network-online.target
@@ -62,7 +68,7 @@ User={target['user']}
 WorkingDirectory={target['checkout']}
 Environment=HOME={target['home']}
 Environment=PYTHONUNBUFFERED=1
-ExecStart={target['checkout']}/.venv/bin/python -m uvicorn accounting.main:app --host {web['bind']} --port {web['port']} --workers 1 --no-proxy-headers
+ExecStart={command}
 Restart=on-failure
 RestartSec=5
 UMask=0077
@@ -75,7 +81,7 @@ WantedBy=multi-user.target
 """
 
 
-def deploy(config, tag):
+def deploy(config, tag):  # noqa: C901 -- preserve explicit deployment preflight/backup ordering
     target = config["target"]
     account = pwd.getpwuid(os.getuid())
     if account.pw_name != target["user"] or account.pw_dir != target["home"]:
@@ -98,7 +104,9 @@ def deploy(config, tag):
     service = target["service"] + ".service"
     state = subprocess.run(
         ["systemctl", "show", service, "--property=LoadState", "--value"],
-        text=True, capture_output=True, check=False,
+        text=True,
+        capture_output=True,
+        check=False,
     )
     loaded = state.stdout.strip()
     if loaded != "not-found" and state.returncode:
@@ -126,8 +134,9 @@ def deploy(config, tag):
     with tempfile.TemporaryDirectory() as temporary:
         generated = Path(temporary) / service
         generated.write_text(unit(config))
-        run("sudo", "install", "-o", "root", "-g", "root", "-m", "600",
-            str(generated), f"/etc/systemd/system/{service}")
+        run(
+            "sudo", "install", "-o", "root", "-g", "root", "-m", "600", str(generated), f"/etc/systemd/system/{service}"
+        )
     run("sudo", "systemctl", "daemon-reload")
     run("sudo", "systemctl", "enable", "--now", service)
     run("sudo", "systemctl", "status", service, "--no-pager")

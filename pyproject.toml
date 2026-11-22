@@ -13,12 +13,15 @@ dependencies = [
     "uvicorn>=0.30",
     "python-multipart>=0.0.9",
     "reportlab>=4.0",
-    "mcp>=1.0",
+    "mcp>=1.26,<2",
 ]
+
+[project.scripts]
+accounting-mcp = "accounting_server.server:main"
 
 [tool.black]
 line-length = 120
-target-version = ['py314']
+target-version = ['py311']
 skip-string-normalization = true
 include = '\.pyi?$'
 exclude = '''
@@ -70,5 +73,7 @@ where = ["."]
 include = [
     "accounting",
     "accounting.*",
+    "accounting_server",
+    "accounting_server.*",
 ]
 exclude = ["tests", "tests.*", "examples", "examples.*"]

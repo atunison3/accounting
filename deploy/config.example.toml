@@ -18,3 +18,12 @@ port = 8000
 [migration]
 # Original absolute documents directory; only used during initial data migration.
 old_documents = "/absolute/path/to/source/.app_data/accounting/documents"
+
+[mcp]
+enabled = false
+# Recommended: loopback + SSH tunnel from your Pi machine. No public exposure.
+bind = "127.0.0.1"
+port = 8003
+# Select an EXISTING active user in the accounting database for audit attribution.
+# This token grants access to all businesses, not just that user's records.
+user_id = 1

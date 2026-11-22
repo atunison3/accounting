@@ -1,57 +1,51 @@
-# .pre-commit-config.yaml
-# Uses tools from the project's .venv so versions stay in sync.
-# Hooks only run against files under accounting/ and tests/.
-
+# Use the project's Python rather than console scripts with stale venv shebangs.
+# Check application, MCP, deployment tooling, and tests.
 repos:
-  # Trailing whitespace (standard pre-commit hook)
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
       - id: trailing-whitespace
-        files: ^(accounting|tests)/
+        files: ^(accounting|accounting_server|deploy|tests)/
 
-  # All other tools run from the local .venv
   - repo: local
     hooks:
       - id: black
         name: black
-        entry: .venv/bin/black
+        entry: .venv/bin/python -m black
         language: system
         types: [python]
-        files: ^(accounting|tests)/
+        files: ^(accounting|accounting_server|deploy|tests)/
 
       - id: ruff-check
         name: ruff check
-        entry: .venv/bin/ruff
+        entry: .venv/bin/python -m ruff
         language: system
         types: [python]
-        files: ^(accounting|tests)/
+        files: ^(accounting|accounting_server|deploy|tests)/
         args: [check]
 
       - id: mypy
         name: mypy
-        entry: .venv/bin/mypy
+        entry: .venv/bin/python -m mypy
         language: system
         types: [python]
-        files: ^(accounting|tests)/
-        # Uncomment the next two lines if you prefer checking whole packages
-        # instead of only the staged files:
+        files: ^(accounting|accounting_server|deploy|tests)/
         pass_filenames: false
-        args: [accounting, tests]
+        args: [--explicit-package-bases, accounting, accounting_server, deploy, tests]
 
       - id: bandit
         name: bandit
-        entry: .venv/bin/bandit
+        entry: .venv/bin/python -m bandit
         language: system
         types: [python]
-        files: ^(accounting|tests)/
-        args: [-r, --quiet -ll -lll]
-        # Add -ll (or -lll) if you only want medium/high severity findings
+        files: ^(accounting|accounting_server|deploy|tests)/
+        pass_filenames: false
+        # Scan production code; test fixtures deliberately contain fake credentials.
+        args: [-r, accounting, accounting_server, deploy, --quiet, --severity-level, medium, --confidence-level, high]
 
       - id: unittest
         name: unittest
         entry: .venv/bin/python -m unittest discover -s tests -p "test_*.py"
         language: system
         pass_filenames: false
-        # Always run the test suite (even if only non-Python files changed)
         always_run: true
