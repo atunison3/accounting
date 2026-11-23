@@ -1,13 +1,18 @@
 # Change Log
 
+## Release v0.2.1
+
+- d2950f1 - Merge pull request #21 from atunison3/andy/using-mcp
+- f7f6869 - Merge pull request #20 from atunison3/release/v0.2.0
+
 ## Release v0.2.0
 
 - e9cbdd5 - Merge pull request #19 from atunison3/andy/mcp-server
 - fd8ec04 - Merge pull request #18 from atunison3/andy/deploy
-- 9cf1f75 - Merge branch 'release/0.1.0'
 
 ## Release v0.1.0
 
+- 9cf1f75 - Merge branch 'release/0.1.0'
 - 8bea48d - Merge pull request #17 from atunison3/andy/first-deploy
 - 222ef75 - Merge pull request #16 from atunison3/andy/mileage-tracker
 - 0dc8e88 - Merge pull request #15 from atunison3/andy/use-ai-populate-app
