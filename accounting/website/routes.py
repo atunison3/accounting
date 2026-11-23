@@ -999,7 +999,7 @@ def edit_account(request: Request, account_id: int) -> HTMLResponse:
     with get_connection(_database_path(request)) as connection:
         account = SqliteAccountRepository(connection).get_by_id(account_id)
     if account is None:
-        return _dashboard(request, f"Account {account_id} was not found.")
+        raise HTTPException(status_code=404, detail="Account not found")
     return templates.TemplateResponse(
         request=request,
         name="edit_account.html",
@@ -1013,10 +1013,10 @@ def edit_account(request: Request, account_id: int) -> HTMLResponse:
 def update_account_form(  # noqa: PLR0913, PLR0917
     request: Request,
     account_id: int,
-    account_number: int = Form(...),
-    account_name: str = Form(...),
+    account_number: int = Form(..., gt=0),
+    account_name: str = Form(..., min_length=1),
     account_type: AccountType = Form(...),  # noqa: B008
-    updated_by: int = Form(...),
+    updated_by: int = Form(..., gt=0),
     is_debit: bool = Form(False),
     is_account_active: bool = Form(False),
     description: str | None = Form(None),
@@ -1026,7 +1026,7 @@ def update_account_form(  # noqa: PLR0913, PLR0917
             repository = SqliteAccountRepository(connection)
             account = repository.get_by_id(account_id)
             if account is None:
-                return _dashboard(request, f"Account {account_id} was not found.")
+                raise HTTPException(status_code=404, detail="Account not found")
             updated = account.model_copy(
                 update={
                     "account_number": account_number,
@@ -1038,6 +1038,8 @@ def update_account_form(  # noqa: PLR0913, PLR0917
                 }
             )
             AccountService(repository).update(account_id, updated, updated_by)
+    except HTTPException:
+        raise
     except Exception as exc:
         LOGGER.exception("Account update failed account_id=%s", account_id)
         return templates.TemplateResponse(
