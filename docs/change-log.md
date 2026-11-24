@@ -1,9 +1,14 @@
 # Change Log
 
+## Release v0.2.2
+
+- 75355a6 - Merge pull request #23 from atunison3/andy/transaction-maintenance
+- 5f037fa - Merge pull request #22 from atunison3/release/v0.2.1
+
 ## Release v0.2.1
 
-- d2950f1 - Merge pull request #21 from atunison3/andy/using-mcp
 - f7f6869 - Merge pull request #20 from atunison3/release/v0.2.0
+- d2950f1 - Merge pull request #21 from atunison3/andy/using-mcp
 
 ## Release v0.2.0
 
