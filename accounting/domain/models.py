@@ -154,6 +154,8 @@ class TransactionEntry(BaseModel):
     amount_cents: int
     is_debit: bool
     has_document: bool = False
+    deleted_at: datetime | None = None
+    deleted_by: int | None = None
 
 
 class TAccountDisplay(BaseModel):

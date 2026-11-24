@@ -99,6 +99,7 @@ class AccountingService:
         date_to: date | None = None,
         currency_code: str | None = None,
         has_document: bool | None = None,
+        include_deleted: bool = False,
     ) -> list[TransactionEntry]:
         return self.repository.search(
             business_id,
@@ -110,6 +111,7 @@ class AccountingService:
             date_to,
             currency_code,
             has_document,
+            include_deleted,
         )
 
     def get_transaction(self, transaction_id: int) -> AccountingTransaction | None:

@@ -652,6 +652,7 @@ def transactions_dashboard(  # noqa: PLR0913, PLR0917
     date_to: str | None = None,
     currency_code: str | None = None,
     has_document: str | None = None,
+    include_deleted: bool = False,
     days: int = 30,
 ) -> HTMLResponse:
     LOGGER.debug("Rendering transactions dashboard business_id=%s", business_id)
@@ -694,6 +695,7 @@ def transactions_dashboard(  # noqa: PLR0913, PLR0917
                     date_to=selected_date_to,
                     currency_code=selected_currency,
                     has_document=selected_has_document,
+                    include_deleted=include_deleted,
                 )
     except Exception as exc:
         LOGGER.exception("Transaction dashboard query failed")
@@ -738,6 +740,7 @@ def api_transactions(  # noqa: PLR0913, PLR0917
     date_to: str | None = None,
     currency_code: str | None = None,
     has_document: bool | None = None,
+    include_deleted: bool = False,
     days: int = 30,
 ) -> JSONResponse:
     """Return filtered transaction lines for Tabulator's remote data source."""
@@ -759,6 +762,7 @@ def api_transactions(  # noqa: PLR0913, PLR0917
             date_to=selected_date_to,
             currency_code=currency_code.upper() if currency_code else None,
             has_document=has_document,
+            include_deleted=include_deleted,
         )
     return JSONResponse([result.model_dump(mode="json") for result in results])
 
@@ -880,6 +884,35 @@ def update_transaction_form(  # noqa: PLR0913, PLR0917
         return_to
         if return_to and return_to.startswith("/") and not return_to.startswith("//")
         else f"/transactions?business_id={business_id}"
+    )
+    return RedirectResponse(url=destination, status_code=303)
+
+
+@router.post("/transactions/{transaction_id}/delete", name="delete_transaction_form")
+def delete_transaction_form(
+    request: Request,
+    transaction_id: int,
+    user_id: int = Form(..., gt=0),
+    confirm: bool = Form(False),
+    return_to: str | None = Form(None),
+) -> RedirectResponse:
+    """Soft-delete only after explicit confirmation; preserve the ledger's audit trail."""
+    if not confirm:
+        raise HTTPException(status_code=400, detail="Please confirm transaction deletion")
+    with get_connection(_database_path(request)) as connection:
+        repository = SqliteTransactionRepository(connection)
+        transaction = repository.get_by_id(transaction_id)
+        if transaction is None:
+            raise HTTPException(status_code=404, detail="Transaction not found or already deleted")
+        user = SqliteUserRepository(connection).get_by_id(user_id)
+        if user is None or not user.is_active:
+            raise HTTPException(status_code=422, detail="An active user ID is required for the deletion audit")
+        AccountingService(repository).delete_transaction(transaction_id, user_id)
+    # Only return to this app's transaction list, never a caller-supplied external URL.
+    destination = (
+        return_to
+        if return_to and return_to.split("?", 1)[0] == "/transactions"
+        else f"/transactions?business_id={transaction.business_id}"
     )
     return RedirectResponse(url=destination, status_code=303)
 
