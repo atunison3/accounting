@@ -1,10 +1,14 @@
 # Documentation
 
-This section describes the package's public models, repository interfaces, and application service.
+This section describes the accounting application: its FastAPI website and JSON API,
+SQLite persistence, application/domain layers, and authenticated MCP integration.
 
 ## Contents
 
 - [Package Reference](package.md)
 - [Architecture](architecture.md)
 
-The project currently contains no configured CLI, web application, or concrete infrastructure repository implementation.
+Start with [Architecture](architecture.md) for the source layout, browser request
+flows, transaction history, storage, security boundaries, and deployment model.
+For running the website safely against a disposable local database, see
+[Testing and Quality](../contributing/testing.md).

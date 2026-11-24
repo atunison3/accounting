@@ -49,6 +49,7 @@ class TransactionRepository:
         date_to: date | None = None,
         currency_code: str | None = None,
         has_document: bool | None = None,
+        include_deleted: bool = False,
     ) -> list[TransactionEntry]:
         raise NotImplementedError
 

@@ -1,5 +1,9 @@
 # Onion Architecture
 
+This page explains architectural concepts using illustrative examples. For the
+implemented website, JSON API, SQLite repositories, and MCP server, see the
+[current application architecture](documentation/architecture.md).
+
 Onion architecture organizes an application into layers arranged from the center outward. The central idea is that dependencies point inward: outer layers may depend on inner layers, but inner layers should not depend on outer layers.
 
 ## 1. Domain Layer

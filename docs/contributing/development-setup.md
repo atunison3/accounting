@@ -2,7 +2,7 @@
 
 The repository is packaged with setuptools and uses the `accounting` package directory.
 
-### macOS / Linux
+## macOS / Linux
 
 ```bash
 git clone https://github.com/atunison3/accounting.git
@@ -13,7 +13,7 @@ python -m pip install -r requirements.txt
 python -m pip install -e .
 ```
 
-### Windows
+## Windows
 
 ```powershell
 git clone https://github.com/atunison3/accounting.git

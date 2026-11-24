@@ -1,6 +1,9 @@
 # accounting
 
-`accounting` is a Python package containing domain models and application services for the accounting exercises described in *College Accounting* by Jeffery Slater.
+`accounting` is a Python accounting application with a FastAPI website, JSON API,
+SQLite ledger, and optional MCP tools for AI clients such as Pi. Its domain models
+and services build on the accounting concepts described in *College Accounting*
+by Jeffery Slater.
 
 ## What is it?
 
@@ -8,10 +11,18 @@ The package models businesses, users, accounts, accounting transactions, transac
 
 ## Why use it?
 
-The package provides a small, typed foundation for accounting software without coupling the domain models to a database or user interface. Repository interfaces allow storage implementations to be supplied separately.
+The website provides transaction entry/history, account management, receipt
+attachments, mileage, and financial reports. Domain models and application services
+remain separate from presentation and storage, with SQLite repository implementations
+supplied at the application boundary.
 
 ## Features
 
+- Server-rendered FastAPI/Jinja2 website and browser-facing JSON endpoints.
+- Account editing and confirmed transaction soft deletion with deleted-history visibility.
+- Receipt/document attachments, mileage tracking, and PDF financial reports.
+- SQLite persistence with audit triggers and transaction rollback.
+- Authenticated MCP transaction tools for remote clients.
 - Pydantic models for core accounting entities.
 - Asset, liability, equity, revenue, and expense account types.
 - Debit and credit amounts represented in cents.
@@ -39,12 +50,15 @@ transaction_id = service.create_transaction(
 )
 ```
 
-`my_repository` must provide the methods used by `AccountingService`; the repository implementations are not currently included in the package.
+`my_repository` must provide the methods used by `AccountingService`. The package
+includes `SqliteTransactionRepository` in `accounting.infrastructure.sqlite.repositories`;
+the website/API and MCP adapters wire services to these concrete repositories.
 
 ## Documentation
 
 - [Installation](getting-started/installation.md)
 - [Usage](getting-started/usage.md)
+- [Architecture: website, API, SQLite, and MCP](documentation/architecture.md)
 - [Package reference](documentation/package.md)
 
 ## Contributing

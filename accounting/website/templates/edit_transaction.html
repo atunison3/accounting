@@ -14,4 +14,15 @@
 <div class="full actions"><button class="button primary" type="submit">Save transaction</button><a class="button secondary" href="{{ return_to }}">Cancel</a><a class="button secondary" href="{{ url_for('upload_document') }}?business_id={{ transaction.business_id }}&amp;transaction_id={{ transaction.id }}&amp;return_to={{ return_to|urlencode }}">Attach document</a></div>
 </form>
 </section>
+<section class="form-card edit-card" aria-labelledby="delete-heading">
+    <h2 id="delete-heading">Delete transaction</h2>
+    <p>This removes transaction {{ transaction.id }} from active books and reports. The transaction, receipt links, and audit history are retained. You can view it using “Include deleted transactions” in transaction history.</p>
+    <form method="post" action="{{ url_for('delete_transaction_form', transaction_id=transaction.id) }}" onsubmit="return window.confirm('Please confirm: delete this transaction? It will be removed from active books but retained in history.');">
+        <input type="hidden" name="return_to" value="{{ return_to }}">
+        <label for="delete-user">Deleted by user ID</label>
+        <input id="delete-user" name="user_id" type="number" min="1" required>
+        <label class="checkbox"><input name="confirm" type="checkbox" value="true" required> Please confirm that you want to delete this transaction.</label>
+        <button class="button danger" type="submit">Delete transaction</button>
+    </form>
+</section>
 {% endblock %}

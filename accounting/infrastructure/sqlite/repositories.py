@@ -715,11 +715,18 @@ class SqliteTransactionRepository(TransactionRepository):
         date_to: date | None = None,
         currency_code: str | None = None,
         has_document: bool | None = None,
+        include_deleted: bool = False,
     ) -> list[TransactionEntry]:
+        """Return current lines, optionally including the lines soft-deleted with their header.
+
+        Lines replaced by earlier edits are excluded even when viewing deleted
+        transactions; delete() stamps the header and its current lines together.
+        """
         debit_filter = _bool_to_int(is_debit) if is_debit is not None else None
         document_filter = _bool_to_int(has_document) if has_document is not None else None
         parameters = (
             business_id,
+            _bool_to_int(include_deleted),
             account_number,
             account_number,
             debit_filter,
@@ -743,7 +750,7 @@ class SqliteTransactionRepository(TransactionRepository):
             """
             SELECT t.id AS transaction_id, t.transaction_date, t.description,
                    t.currency_code, t.posting_reference, a.account_number, a.account_name,
-                   l.amount_cents, l.is_debit,
+                   l.amount_cents, l.is_debit, t.deleted_at, t.deleted_by,
                    CASE WHEN EXISTS (
                        SELECT 1 FROM accounting_transaction_documents AS atd
                        WHERE atd.transction_id = t.id AND atd.deleted_at IS NULL
@@ -752,8 +759,12 @@ class SqliteTransactionRepository(TransactionRepository):
             JOIN transaction_lines AS l ON l.transaction_id = t.id
             JOIN accounts AS a ON a.id = l.account_id
             WHERE t.business_id = ?
-              AND t.deleted_at IS NULL
-              AND l.deleted_at IS NULL
+              AND (? = 1 OR t.deleted_at IS NULL)
+              AND (
+                  (t.deleted_at IS NULL AND l.deleted_at IS NULL)
+                  OR (t.deleted_at IS NOT NULL AND l.deleted_at = t.deleted_at
+                      AND l.deleted_by IS t.deleted_by)
+              )
               AND (? IS NULL OR a.account_number = ?)
               AND (? IS NULL OR l.is_debit = ?)
               AND (? IS NULL OR l.amount_cents >= ?)
@@ -781,6 +792,8 @@ class SqliteTransactionRepository(TransactionRepository):
                 amount_cents=row["amount_cents"],
                 is_debit=_int_to_bool(row["is_debit"]),
                 has_document=_int_to_bool(row["has_document"]),
+                deleted_at=row["deleted_at"],
+                deleted_by=row["deleted_by"],
             )
             for row in cur.fetchall()
         ]
